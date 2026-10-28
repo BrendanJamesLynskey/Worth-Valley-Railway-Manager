@@ -689,7 +689,7 @@ const CATALOG_DIESEL = [
   {key:"c45",  name:"Class 45 'Peak'", number:"45133", cost:60000, draw:1.24, reliability:0.85, maxHaul:9, runPerMile:8, wear:0.9, pace:1.0,
    blurb:"The Midland Main Line's Sulzer Type 4."},
   {key:"c40",  name:"Class 40 'Whistler'", number:"40135", cost:62000, draw:1.27, reliability:0.84, maxHaul:9, runPerMile:8, wear:0.95, pace:1.0,
-   blurb:"The famous turbocharger whistle echoes all the way up the dale."},
+   blurb:"The famous turbocharger whistle echoes all the way up the Worth Valley."},
   {key:"c08",  name:"Class 08 shunter", number:"08436", cost:16000, draw:0.95, reliability:0.93, maxHaul:3, runPerMile:4, wear:0.7, pace:0.75,
    blurb:"The yard shunter. Slow (15 mph flat out) but a short train for brake-van days runs for pennies."},
   {key:"c20",  name:"Class 20", number:"20031", cost:32000, draw:1.06, reliability:0.91, maxHaul:6, runPerMile:6, wear:0.8, pace:1.0,
@@ -739,7 +739,7 @@ const CATALOG_RAKE = [
   {key:"mk1x8",  name:"BR Mk1 8-coach set", cars:8, capacity:512, comfort:1.0, cost:40000, upkeep:430,
    blurb:"The biggest train on the line. Only the strongest engines can lift it up the bank to Oxenhope."},
   {key:"mk1rest", name:"Mk1 set with restaurant car", cars:5, capacity:280, comfort:1.35, cost:48000, upkeep:450,
-   blurb:"Four coaches and a restaurant car: afternoon tea all the way up the dale."},
+   blurb:"Four coaches and a restaurant car: afternoon tea all the way up the Worth Valley."},
   {key:"obs",    name:"Observation car set", cars:4, capacity:200, comfort:1.45, cost:52000, upkeep:420,
    blurb:"Three coaches and a panoramic observation car at the Oxenhope end."}
 ];
@@ -1377,7 +1377,7 @@ function advanceWeek(opt={}){
 
   const report = {week:state.week, weather:state.weather, days:runDays, ev, def, dayRes:[], events:[], startCash:state.cash};
   if(opt.drive && opt.drive.stops) report.events.push(driveEvent(opt.drive));
-  if(opt.shunt) report.events.push({cls:"good", text:`${opt.shunt.dmu ? `🚃 You drove the ${opt.shunt.train} unit off shed and into the platform yourself` : `🚜 You marshalled the ${opt.shunt.train} train yourself`}: ${"★".repeat(opt.shunt.stars)}${"☆".repeat(3-opt.shunt.stars)} (${opt.shunt.time}, ${opt.shunt.rough} rough shunt${opt.shunt.rough===1?"":"s"}).`});
+  if(opt.shunt) report.events.push({cls:"good", text:`${opt.shunt.dmu ? `🚃 You drove the ${opt.shunt.train} unit off shed and into the carriage siding yourself` : `🚜 You marshalled the ${opt.shunt.train} train yourself`}: ${"★".repeat(opt.shunt.stars)}${"☆".repeat(3-opt.shunt.stars)} (${opt.shunt.time}, ${opt.shunt.rough} rough shunt${opt.shunt.rough===1?"":"s"}).`});
   for(let d=0; d<runDays; d++){
     // roll failures for each set: per-trip probability from condition and reliability
     const failTrip = plan.sets.map(s=>{
@@ -3060,9 +3060,9 @@ function shuntJob(plan){
 }
 function offerShunt(jobs){
   const coach = jobs.find(j=>j.mode!=="dmu"), units = jobs.filter(j=>j.mode==="dmu");
-  openModal(coach ? "Marshal the First Train?" : "Bring the Unit off Shed?", `${coach ? `<p>Before the ${coach.time} departure, the coaches are waiting on the Platform road, but <b>${coach.need.map(v=>`${v.label} (${v.name})`).join(" and ")}</b> ${coach.need.length>1?"are":"is"} still in the engine shed.</p>
+  openModal(coach ? "Marshal the First Train?" : "Bring the Unit off Shed?", `${coach ? `<p>Before the ${coach.time} departure, the coaches are waiting in the carriage siding at Haworth, but <b>${coach.need.map(v=>`${v.label} (${v.name})`).join(" and ")}</b> ${coach.need.length>1?"are":"is"} still in the engine shed.</p>
     <p>Climb into the Class 08 shunter, fetch the right engine from the shed and put it on the front of the train?</p>` : ""}
-    ${units.length ? `<p>${units.map(j=>`<b>${j.need[0].label} (${j.need[0].name})</b> for the ${j.time}`).join(", and ")} ${units.length>1?"are":"is"} stabled in the engine shed. Take the driver's seat, run it out onto the headshunt, change ends and draw it into the platform? Or start in the shunter on the headshunt and walk over to it.</p>` : ""}
+    ${units.length ? `<p>${units.map(j=>`<b>${j.need[0].label} (${j.need[0].name})</b> for the ${j.time}`).join(", and ")} ${units.length>1?"are":"is"} stabled in the engine shed. Take the driver's seat, run it out onto the headshunt, change ends and draw it into the carriage siding ready to work empty to Keighley? Or start in the shunter on the headshunt and walk over to it.</p>` : ""}
     <p>A clean, quick job lifts reputation and morale. Or the shed staff will sort it out.</p>
     <div class="toolbar" style="margin-bottom:0">
       ${jobs.map((j,i)=>j.mode==="dmu"
@@ -3269,7 +3269,7 @@ function yWalk(dt){
   if(!yBlocked(f.x, nz)) f.z = nz;
 }
 function yUncouple(keep){
-  if(yd.dmu){ yMsg("Nothing to uncouple: just drive the unit into the platform", true); return; }
+  if(yd.dmu){ yMsg("Nothing to uncouple: just drive the unit into the carriage siding", true); return; }
   if(!yd.sh){ yMsg("Climb into the shunter first (F)", true); return; }
   if(Math.abs(yd.v) > 0.05){ yMsg("Stop before uncoupling", true); return; }
   if(yd.string.length<2){ yMsg("Nothing coupled to the shunter", true); return; }
@@ -3343,7 +3343,7 @@ function yCheckDone(){
     const d = document.getElementById("yDone");
     d.innerHTML = `<div class="card"><h3 style="justify-content:center">${yd.dmu?"Unit in the platform!":"Train marshalled!"}</h3>
       <div class="ystars">${"★".repeat(stars)}${"☆".repeat(3-stars)}</div>
-      <p>${yd.dmu ? `${yd.unit.label} is in the platform for the ${yd.job.train}.` : `${yd.job.set}'s train is ready on the Platform road.`}<br>Time ${time} · ${yd.rough} rough shunt${yd.rough===1?"":"s"}</p>
+      <p>${yd.dmu ? `${yd.unit.label} is in the carriage siding for the ${yd.job.train}.` : `${yd.job.set}'s train is ready in the carriage siding.`}<br>Time ${time} · ${yd.rough} rough shunt${yd.rough===1?"":"s"}</p>
       <p class="sub">${stars===3?"A textbook job. The shed staff are impressed (+2 reputation, morale up).":stars===2?"Good work (+1 reputation).":"It's done, if not pretty."}</p>
       <button class="act greenbtn" onclick="endShunt(yd.result)">Back to the laptop and run the weekend ▸</button></div>`;
     d.hidden = false;
@@ -3362,12 +3362,12 @@ function yHud(){
   const want = yd.targetIds.map(id=>yd.veh[id]), P = yPlatform(), need = yd.veh.filter(v=>v.need);
   const shed = r => yd.veh.filter(v=>v.route===r && !yd.string.includes(v)).sort((a,b)=>a.s-b.s);
   const job = yd.dmu ? `<b>Bring ${yd.unit.label} off shed for the ${yd.job.train}</b>
-    <div class="ysub ymore">${yd.via ? `You start in the shunter on the headshunt. Drive it nearer the shed if you like, stop, climb down (F) and walk to ${yd.unit.label} (hold Shift or Sprint to run). Climb into its cab (F), drive out` : "You're in the cab facing the shed doors. Drive out"} onto the headshunt, clear of the points, change ends (E), set the points for the Platform road and draw up gently to the stop board at the end of the platform.</div>`
+    <div class="ysub ymore">${yd.via ? `You start in the shunter on the headshunt. Drive it nearer the shed if you like, stop, climb down (F) and walk to ${yd.unit.label} (hold Shift or Sprint to run). Climb into its cab (F), drive out` : "You're in the cab facing the shed doors. Drive out"} onto the headshunt, clear of the points, change ends (E), set the points for the carriage siding and draw up gently to the stop board at its end.</div>`
     : `<b>Make up the ${yd.job.train} train</b>
-    <div class="ysub ymore">The coaches are ready on the Platform road. Fetch ${need.map(v=>`<b>${v.label}</b> ${v.name}`).join(", then ")} from the shed, buffer up gently to the coaches and uncouple (U).</div>`;
+    <div class="ysub ymore">The coaches are ready in the carriage siding. Fetch ${need.map(v=>`<b>${v.label}</b> ${v.name}`).join(", then ")} from the shed, buffer up gently to the coaches and uncouple (U).</div>`;
   document.getElementById("yJob").innerHTML = `${job}
     <div class="ystrip"><span class="ystop"></span>${yd.dmu ? `<span class="ysub">stop board ·</span>` : ""}${want.map(v=>yChip(v,"target")).join("")}<span class="ysub">→ points</span></div>
-    <div class="ymore"><div class="ysub">On the Platform road now:</div>
+    <div class="ymore"><div class="ysub">In the carriage siding now:</div>
     <div class="ystrip"><span class="ystop"></span>${P.length ? P.map((v,i)=>yChip(v, v.id===yd.targetIds[i]?"ok":"")).join("") : `<span class="ysub">empty</span>`}</div>
     ${[2,3].map(r=>`<div class="ysub">${ROUTE_NAMES[r-1]} (door end first):</div><div class="ystrip">${shed(r).length ? shed(r).map(v=>yChip(v, v.need?"target":"")).join("") : `<span class="ysub">empty</span>`}</div>`).join("")}</div>`;
   const foul = yFoul();
@@ -5701,7 +5701,7 @@ class VBuf {
   data(){ return this.f.subarray(0, this.length); }
 }
 const CHUNK = 400;   // the line's world is built in 400 m squares, and only those near the eye are drawn
-let DRAW_EYE = null, DRAW_FAR = 2300;
+let DRAW_EYE = null, DRAW_FAR = 1900;   // the fog has closed in completely by 1,850 m
 function lineSceneMesh(G){
   const T = lineTerrain(G), g = kwGrid(), chunks = new Map();
   const A = (x, z) => { const i = Math.floor(x/CHUNK), j = Math.floor(z/CHUNK), k = i + "," + j; let c = chunks.get(k);
@@ -5850,11 +5850,13 @@ function kwTrack(A, At, G, T){
       G.sigs.push({i, dir, s:ss, x:q.x, y:q.y + 4.6, z:q.z, yaw:q.yaw}); }
   });
   // bridges and viaducts: stone arches where the line stands high above the land, plate girders over the lanes
-  for(const [b0, b1] of G.bris){ const mid = (b0 + b1)/2, pm = G.at(mid), hgt = pm.y - T.dem(pm.x, pm.z), len = b1 - b0, vc = [.5,.46,.41];
-    if(hgt > 6 && len > 25){ const n = Math.max(2, Math.round(len/11)), span = len/n, r = span*0.38;
+  for(const [b0, b1] of G.bris){ const mid = (b0 + b1)/2, pm = G.at(mid), len = b1 - b0, vc = [.5,.46,.41];
+    let low = 1e9; for(let o = -40; o <= 40; o += 4){ const q = G.at(mid, o); low = Math.min(low, T.dem(q.x, q.z)); }   // the valley floor beside it
+    const hgt = pm.y - low;
+    if(hgt > 4.5 && len > 28){ const n = Math.max(2, Math.round(len/8)), span = len/n, r = Math.min(span*0.4, (hgt - 1.6)*0.8);
       for(let s = b0; s < b1; s += DRV.step){ const e = Math.min(b1, s + DRV.step), p = G.at((s + e)/2), a = A(p.x, p.z); box(a, p.x, p.y - 0.4, p.z, 5.0, 1.6, e - s + 0.05, vc, p.yaw);
         for(const o of [2.45,-2.45]){ const q = G.at((s + e)/2, o); box(a, q.x, q.y + 1.0, q.z, 0.4, 1.2, e - s + 0.05, vc, q.yaw); } }
-      for(let k=0;k<=n;k++){ const s = b0 + k*span, p = G.at(s), gnd = T.dem(p.x, p.z) - 2, top = p.y - 1.2 - r;
+      for(let k=0;k<=n;k++){ const s = b0 + k*span, p = G.at(s), gnd = Math.min(T.dem(p.x, p.z), low + 1) - 2, top = p.y - 1.2 - r;
         if(top > gnd) box(A(p.x, p.z), p.x, (gnd + top)/2, p.z, 4.8, top - gnd + 0.5, Math.max(1.2, span - 2*r), vc, p.yaw); }
       for(let k=0;k<n;k++){ const sc = b0 + (k + 0.5)*span, p = G.at(sc), spring = p.y - 1.2 - r, c = Math.cos(p.yaw), sn = Math.sin(p.yaw), a = A(p.x, p.z);
         const at = (along, y, o) => [p.x + sn*along + c*o, y, p.z + c*along - sn*o];
@@ -6074,6 +6076,7 @@ function kwScenery(A, At, G, T){
         const q = at2(d + c.len/2), n2 = lineNear(G, q.x, q.z), y = n2.d < 12 ? G.y(n2.s) : T.height(q.x, q.z).h + 0.05;
         place(A(q.x, q.z), c.mesh, q.x, y, q.z, q.yaw); d += c.len + 0.3; } } }
   // the names on the pubs, the chapels and the museums
+  { const ch = KW.names.find(n=>/St Michael/.test(n[2])); if(ch){ const x = ch[0] - 45, z = ch[1] + 10; G.signs.push({x, y:T.height(x, z).h + 9, z, text:"Brontë Parsonage Museum", kind:"cafe"}); } }
   for(const [x, z, name, kind, h] of KW.names){ const y = T.height(x, z).h + Math.max(4, Math.min(h || 0, 9) + 1);
     G.signs.push({x, y, z, text:name, kind:kind==="pub" ? "pub" : kind==="museum" ? "cafe" : "w"}); }
   for(const st of KW.stn) if(st.key==="HAW"){ const q = G.at((st.s0 + st.s1)/2 - 40, 420); }
