@@ -31,8 +31,8 @@ def xy(i):
     return ((n["lon"] - LON0) * KX, (n["lat"] - LAT0) * KZ)
 
 
-# ---- elevation: the terrarium mosaic is tiles x 8101..8106, y 5269..5276 at zoom 14 (web mercator)
-Z, TX0, TY0 = 14, 8101, 5269
+# ---- elevation: the terrarium mosaic is tiles x 8099..8108, y 5267..5278 at zoom 14 (web mercator)
+Z, TX0, TY0 = 14, 8099, 5267
 
 
 def dem_at(x, z):
@@ -444,7 +444,7 @@ img = np.zeros((MH, MW, 3))
 for my in range(MH):
     for mx in range(MW):
         x, z = frommap(mx, my)
-        if not (-4500 < x < 4050 and -5950 < z < 5400):   # beyond the elevation data
+        if not (-7400 < x < 6950 and -8850 < z < 8300):   # beyond the elevation data
             img[my, mx] = (226, 230, 214); continue
         h = dem_at(x, z)
         hx = dem_at(x + 15, z) - dem_at(x - 15, z)
@@ -482,6 +482,19 @@ for w in WY.values():
         map_lakes.append(svgpath(ring(w)))
 # the line on the map, every 40 m, with its distance along
 mline = [[*tomap(*at(s)), round(s, 1)] for s in np.arange(0, L, 40.0)] + [[*tomap(*P[-1]), round(L, 1)]]
+# the towns and villages, and the Network Rail line through Keighley
+map_places = []
+for i, n in N.items():
+    t = n.get("tags", {})
+    if t.get("place") in ("town", "village", "suburb", "hamlet", "neighbourhood", "locality") and t.get("name"):
+        mx, my = tomap(*xy(i))
+        if 20 < mx < MW - 20 and 20 < my < MH - 20:
+            map_places.append([mx, my, t["name"], {"town": 3, "village": 2, "suburb": 1}.get(t["place"], 0)])
+map_nr = []
+for w in WY.values():
+    t = w.get("tags", {})
+    if t.get("railway") == "rail" and (t.get("usage") == "main" or "Airedale" in t.get("name", "")):
+        map_nr.append(svgpath(ring(w)))
 mstn = [list(tomap(*at((st["s0"] + st["s1"]) / 2))) for st in STN]
 north = [round(-math.sin(rot) * 1, 4), round(-math.cos(rot) * 1, 4)]   # screen direction of north
 out = dict(
@@ -492,7 +505,7 @@ out = dict(
     grid=dict(x0=GX0, z0=GZ0, cell=GC, nx=nx, nz=nz, h=b64u16(H), lc=b64u8(LC)),
     bld=bld, names=names, roads=roads, walls=walls, rivers=rivers, lakes=lakes, woods=woods, rails=rails, plats=plats,
     tt=turntables,
-    map=dict(line=mline, stn=mstn, rivers=map_rivers, roads=map_roads, lakes=map_lakes, north=north, scale=round(scale, 5)),
+    map=dict(line=mline, stn=mstn, rivers=map_rivers, roads=map_roads, lakes=map_lakes, north=north, scale=round(scale, 5), places=map_places, nr=map_nr),
 )
 js = "const KW = " + json.dumps(out, separators=(",", ":")) + ";\n"
 open(os.path.join(C, "kwvr_data.js"), "w").write(js)
