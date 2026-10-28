@@ -5644,7 +5644,7 @@ function lineTerrain(G){
   const cover = (x, z) => { const i = Math.round((x - g.x0)/g.cell), j = Math.round((z - g.z0)/g.cell); return i < 0 || j < 0 || i >= g.nx || j >= g.nz ? 0 : g.LC[j*g.nx + i]; };
   const base = (x, z) => { const n = lineNear(G, x, z); let h = dem(x, z);
     const s = n.s, tun = G.inTun(s), br = G.onBridge(s, 1);
-    if(tun){ if(n.d < 40) h = Math.max(h, G.y(s) + 9 + Math.max(0, n.d - 8)*0.35); }   // the hill over the bore
+    if(tun){ const req = G.y(s) + 9 + Math.max(0, n.d - 5)*0.5, w = 1 - smooth01((n.d - 10)/18); if(h < req) h += (req - h)*w; }   // the hill over the bore
     else if(!br || n.d > 14){ const f = G.y(s) - 0.4, rise = f - h;
       // the formation: embankment sides at 1 in 2, cutting sides at 1 in 1.5
       const W = rise > 0 ? 4.5 + 2*rise : 4.5 + 1.5*(-rise); let w = 1 - smooth01((n.d - 4.5)/Math.max(0.5, W - 4.5));
@@ -5717,13 +5717,17 @@ function lineSceneMesh(G){
   const IX0 = Math.min(...xs) - 1300, IX1 = Math.max(...xs) + 1300, IZ0 = Math.min(...zs) - 1300, IZ1 = Math.max(...zs) + 1300;
   // round each tunnel portal the ground steps straight up from the floor of the cutting to the hill over the bore, too
   // sharp for the mesh: there it's left out, and a finer patch laid along the line takes its place
-  const PR = G.tuns.flat(), inPR = n => { for(let k=0;k<PR.length;k++) if(Math.abs(n.s - PR[k]) < 45 && n.d < 40) return k + 1; return 0; };
-  { const cell = 20, nx = Math.ceil((IX1-IX0)/cell), nz = Math.ceil((IZ1-IZ0)/cell), H = new Float32Array((nx+1)*(nz+1)), C = [], R0 = new Uint8Array((nx+1)*(nz+1));
+  const PR = G.tuns.flat(), inPR = n => { for(let k=0;k<PR.length;k++) if(Math.abs(n.s - PR[k]) < 52 && n.d < 34) return k + 1; return 0; };
+  // The cuttings and embankments are far narrower than the 20 m squares, so along the line a fine strip of land (3 m by
+  // 4 m, out to 48 m either side) takes over; under it the squares are pressed down so they never show through
+  const inStrip = n => n.d < 44 && n.s > -10 && n.s < G.L + 10;
+  { const cell = 20, nx = Math.ceil((IX1-IX0)/cell), nz = Math.ceil((IZ1-IZ0)/cell), H = new Float32Array((nx+1)*(nz+1)), C = [], R0 = new Uint8Array((nx+1)*(nz+1)), ST = new Uint8Array((nx+1)*(nz+1));
     for(let j=0;j<=nz;j++) for(let i=0;i<=nx;i++){ const x = IX0 + i*cell, z = IZ0 + j*cell, q = j*(nx+1) + i, {h, n} = T.height(x, z);
-      H[q] = h; C[q] = colOf(x, z, h, n); R0[q] = inPR(n); }
+      H[q] = n.d < 24 && n.s > -10 && n.s < G.L + 10 && !G.inTun(n.s, 50) ? Math.min(h, G.y(n.s) - 1.2) : h; C[q] = colOf(x, z, h, n); R0[q] = inPR(n); ST[q] = inStrip(n) ? 1 : 0; }
     const v = (i, j) => [IX0 + i*cell, H[j*(nx+1) + i], IZ0 + j*cell];
     for(let j=0;j<nz;j++) for(let i=0;i<nx;i++){ const q = j*(nx+1) + i, r = R0[q];
-      if(r && R0[q+1]===r && R0[q+nx+1]===r && R0[q+nx+2]===r) continue;
+      if(r || R0[q+1] || R0[q+nx+1] || R0[q+nx+2]) continue;   // the portals' own patches cover these
+      if(ST[q] && ST[q+1] && ST[q+nx+1] && ST[q+nx+2]) continue;
       quad(A(IX0 + (i + 0.5)*cell, IZ0 + (j + 0.5)*cell), v(i,j), v(i,j+1), v(i+1,j+1), v(i+1,j), C[q], [0,1,0]); } }
   { const cell = 50, X0 = g.x0, Z0 = g.z0, nx = Math.floor((g.nx - 1)*g.cell/cell), nz = Math.floor((g.nz - 1)*g.cell/cell);
     const h = (i, j) => T.dem(X0 + i*cell, Z0 + j*cell);
@@ -5732,12 +5736,19 @@ function lineSceneMesh(G){
       const tuck = (x0 + cell > IX0 && x0 < IX1 && z0 + cell > IZ0 && z0 < IZ1) ? 1.5 : 0, hh = h(i, j), k = 0.03*Math.sin(x0*0.01 + z0*0.013);
       const c = T.cover(x0, z0)===4 ? [.2,.31,.16] : hh > 280 || T.cover(x0, z0)===1 ? [.43 + k,.36,.31] : hh > 240 ? [.41 + k,.44,.28] : [.33 + k,.46,.23];
       quad(A(x0 + cell/2, z0 + cell/2), [x0, h(i,j) - tuck, z0], [x0, h(i,j+1) - tuck, z0 + cell], [x0 + cell, h(i+1,j+1) - tuck, z0 + cell], [x0 + cell, h(i+1,j) - tuck, z0], c, [0,1,0]); } }
+  { const os = []; for(let o = -48; o <= 48; o += 3) os.push(o);
+    let prev = null;
+    for(let s = -20; s <= G.L + 20; s += DRV.step){
+      if(PR.some(p=>Math.abs(s - p) < 80)){ prev = null; continue; }   // the portals have their own patch
+      const row = os.map(o=>{ const q = G.at(s, o), t = T.height(q.x, q.z); return {p:[q.x, t.h - (Math.abs(o) > 44 ? 0.15 : 0), q.z], c:colOf(q.x, q.z, t.h, t.n)}; });
+      if(prev) for(let w=0;w<os.length-1;w++){ const P0 = prev[w], P1 = row[w], P2 = row[w+1], P3 = prev[w+1]; quad(A(P0.p[0], P0.p[2]), P0.p, P1.p, P2.p, P3.p, P0.c, [0,1,0]); }
+      prev = row; } }
   for(const p of PR){ const ss = [], os = [];
-    for(let t = -45; t <= 45; t += 2) ss.push(p + t); ss.push(p - 0.02, p + 0.02); ss.sort((u, w)=>u - w);
-    for(let o = -40; o <= 40; o += 2) os.push(o);
+    for(let t = -80; t <= 80; t += 2) ss.push(p + t); ss.push(p - 0.02, p + 0.02); ss.sort((u, w)=>u - w);
+    for(let o = -64; o <= 64; o += 2) os.push(o);
     const into = G.inTun(p + 1) ? 1 : -1;   // which way the bore runs from this portal
     const V = ss.map(sv=>os.map(o=>{ const q = G.at(sv, o), t = T.height(q.x, q.z);
-      const edge = Math.max(smooth01((Math.abs(sv - p) - 37)/8), smooth01((Math.abs(o) - 32)/8));
+      const edge = Math.max(smooth01((Math.abs(sv - p) - 76)/4), smooth01((Math.abs(o) - 60)/4));
       return {p:[q.x, t.h - 0.3*edge, q.z], c:colOf(q.x, q.z, t.h, t.n)}; }));
     for(let u=0;u<ss.length-1;u++) for(let w=0;w<os.length-1;w++){ const P0 = V[u][w], P1 = V[u+1][w], P2 = V[u+1][w+1], P3 = V[u][w+1];
       if(ss[u] < p && ss[u+1] > p && Math.abs(os[w]) <= 4 && Math.abs(os[w+1]) <= 4) continue;   // the mouth of the bore
