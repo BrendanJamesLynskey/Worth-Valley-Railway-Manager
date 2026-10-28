@@ -627,6 +627,9 @@ const STATIONS = [
   {key:"OXE", name:"Oxenhope",    loop:true,  blurb:"Terminus at 660 ft, at the head of the valley: the run-round loop, the exhibition shed, the carriage shed and the buffet car."}
 ].map((st, i)=>({...st, mile:Math.round(KW_MILE(KW.stn[i])*1000)/1000, s:(KW.stn[i].s0 + KW.stn[i].s1)/2}));
 const LINE_MILES = STATIONS[STATIONS.length-1].mile;
+// The game's costs were set for a 14-mile line: on the Worth Valley's 4¾ miles, coal, oil and wear count each mile about
+// three times over, so a round trip costs what it would there (the climb, the stops and the run-rounds are the same work)
+const MILE_SCALE = 14/LINE_MILES;
 const STATION_SHORT = ["Keighley","Ingrow","Damems","Oakworth","Haworth","Oxenhope"];
 // Where the day's passengers join: most come by train or car to Keighley; Haworth brings the Brontë visitors.
 const STATION_SHARE = [0.5, 0.07, 0.02, 0.1, 0.22, 0.09];
@@ -1319,10 +1322,10 @@ function evaluateDay(plan, sim, noise){
     fares += tr.pax*fare;
     if(tr.failed){ const r = Math.round(tr.pax*fare*0.5); refunds += r; }
     legs += tr.arrHome!=null ? 2 : 1;
-    fuel += tr.set.runPerMile * tr.miles;
+    fuel += tr.set.runPerMile * tr.miles * MILE_SCALE;
     delaySum += tr.delay;
   });
-  (sim.ecs||[]).forEach(e=>{ fuel += e.set.runPerMile * e.miles; });
+  (sim.ecs||[]).forEach(e=>{ fuel += e.set.runPerMile * e.miles * MILE_SCALE; });
   const spend = Math.round(pax*spendPer);
   const upkeep = plan.sets.filter(s=>s.rcat).reduce((a,s)=>a+s.rcat.upkeep,0);
   const volCost = plan.volNeed*6;
@@ -1450,11 +1453,11 @@ function settleWeek(plan, report, mk){
                     + (sim.ecs||[]).filter(e=>e.set===s).reduce((a,e)=>a+e.miles,0);
         const failed = sim.trips.some(t=>t.set===s && t.failed);
         const wearOn = (loco, cat, guest, k) => { if(guest) return;
-          const lw = miles/3300 * cat.wear * (k==="steam"?1.25:1) * (1 + 0.3*Math.min(1,s.cars/s.maxHaul));
+          const lw = miles*MILE_SCALE/3300 * cat.wear * (k==="steam"?1.25:1) * (1 + 0.3*Math.min(1,s.cars/s.maxHaul));
           loco.condition = Math.max(0.03, loco.condition - lw - (failed?0.1:0)); };
         wearOn(s.loco, s.lcat, s.trainGuest, s.loco.kind);
         if(s.pilot) wearOn(s.pilot, s.pcat, s.pilotGuest, s.pilot.kind);
-        if(s.rake) s.rake.condition = Math.max(0.05, s.rake.condition - miles/6500*(state.upgrades.cshed?0.5:1));
+        if(s.rake) s.rake.condition = Math.max(0.05, s.rake.condition - miles*MILE_SCALE/6500*(state.upgrades.cshed?0.5:1));
       });
     }
     repDelta = Math.round(repDelta/runDays);
@@ -6055,6 +6058,21 @@ function kwScenery(A, At, G, T){
   for(let k=0;k<90;k++){ const s = rnd()*G.L, o = (rnd() < 0.5 ? -1 : 1)*(60 + rnd()*600), q = G.at(s, o), t = T.height(q.x, q.z), c = T.cover(q.x, q.z);
     if((c!==0 && c!==1) || t.n.d < 40) continue; const cow = t.h < 160 && rnd() < 0.5, a = A(q.x, q.z);
     for(let j=0;j<(cow ? 3 : 6);j++){ const x = q.x + (rnd() - 0.5)*20, z = q.z + (rnd() - 0.5)*20; scSheep(a, x, T.height(x, z).h, z, rnd()*6.3, cow); } }
+  // coaches standing in the sidings: the carriage sidings at Oxenhope, the Vintage Carriages Trust's collection at Ingrow,
+  // and a set stabled at Keighley
+  { const place = (a, arr, x, y, z, yaw) => { const c = Math.cos(yaw), sn = Math.sin(yaw);
+      for(let i=0;i<arr.length;i+=9){ const lx = arr[i], lz = arr[i+2], nx = arr[i+3], nz = arr[i+5];
+        a.push(x + c*lx + sn*lz, y + arr[i+1], z - sn*lx + c*lz, c*nx + sn*nz, arr[i+4], -sn*nx + c*nz, arr[i+6], arr[i+7], arr[i+8]); } };
+    const cache = {}, coach = (key, k) => { const vs = rakeVehicles(key), v = vs[k % vs.length], id = key + v.use; return {mesh:cache[id] || (cache[id] = coachMesh(v)), len:v.len}; };
+    const where = [[1950, 2320, "teak", 4], [7700, 8150, "mk1x6", 4], [150, 950, "mk1x4", 3]];
+    for(const r of kwPolys(KW.rails, 2)){ if(r.ex[0]) continue; const P2 = r.pts, mid = P2[Math.floor(P2.length/2)], nr = lineNear(G, mid[0], mid[1]);
+      const w = where.find(([a0, a1])=>nr.s > a0 && nr.s < a1 && nr.d > 6 && nr.d < 140); if(!w) continue;
+      let tot = 0; const cum = [0]; for(let i=1;i<P2.length;i++){ tot += Math.hypot(P2[i][0]-P2[i-1][0], P2[i][1]-P2[i-1][1]); cum.push(tot); }
+      const at2 = d => { let i = 1; while(i < P2.length-1 && cum[i] < d) i++; const f = (d - cum[i-1])/((cum[i] - cum[i-1]) || 1), [ax, az] = P2[i-1], [bx, bz] = P2[i]; return {x:ax + (bx-ax)*f, z:az + (bz-az)*f, yaw:Math.atan2(bx-ax, bz-az)}; };
+      let d = 8;
+      for(let k=0; k<w[3]; k++){ const c = coach(w[2], k); if(d + c.len > tot - 4) break;
+        const q = at2(d + c.len/2), n2 = lineNear(G, q.x, q.z), y = n2.d < 12 ? G.y(n2.s) : T.height(q.x, q.z).h + 0.05;
+        place(A(q.x, q.z), c.mesh, q.x, y, q.z, q.yaw); d += c.len + 0.3; } } }
   // the names on the pubs, the chapels and the museums
   for(const [x, z, name, kind, h] of KW.names){ const y = T.height(x, z).h + Math.max(4, Math.min(h || 0, 9) + 1);
     G.signs.push({x, y, z, text:name, kind:kind==="pub" ? "pub" : kind==="museum" ? "cafe" : "w"}); }
