@@ -15,7 +15,7 @@ share.
 *An unofficial, fan-made game, not connected with the Keighley &amp; Worth Valley Railway. The people and companies who
 write to you in the game are fictional.*
 
-![Haworth: the loco yard behind the platform, the shed facing Oxenhope with the works and the DMU siding on its main-line side](haworth.png)
+![Haworth: the platform, and the loco yard beside the main line beyond it, with the shed and the stored DMUs](haworth.png)
 
 Everything runs in a single self-contained `index.html`, with no build step and no network after load. The world data is
 packed into the page: about 1.1 MB for the line, the land and 12,000 buildings. Progress auto-saves to your browser's
@@ -29,7 +29,7 @@ local storage, under its own name, so it doesn't clash with a Heritage Railway M
 | Ingrow West | 1.17 | 117 m | | The station building moved from Foulridge, the Museum of Rail Travel's vintage carriages, Ingrow Tunnel (152 m) just beyond |
 | Damems | 1.86 | 134 m | ⇄ | One coach long, the level crossing and its gate box, the passing loop |
 | Oakworth | 2.68 | 154 m | (buildable) | The Railway Children's station: gas lamps, enamel adverts, the level crossing and its ground frame |
-| Haworth | 3.51 | 170 m | ⇄ | The railway's headquarters, the footbridge to the village, and the loco yard behind the platform: the shed just past its Oxenhope end, facing Oxenhope, the works on its main-line side and the DMU siding |
+| Haworth | 3.51 | 170 m | ⇄ | The railway's headquarters, the footbridge to the village, and the loco yard behind the platform, joined to the main line: the shed just past its Oxenhope end, facing Oxenhope, the works on its main-line side and the DMU siding |
 | Oxenhope | 4.72 | 196 m | ⇄ | The run-round loop and headshunt, the exhibition shed, the carriage shed and the roofed carriage sidings, the stone goods shed and the buffet carriage |
 
 Between Oakworth and Haworth the line crosses the Worth on Mytholmes Viaduct and goes through Mytholmes Tunnel (69 m), on
@@ -83,10 +83,11 @@ To rebuild the data, fetch OpenStreetMap for the corridor and the terrain tiles,
 ## What's Different From Heritage Railway Manager
 
 - **The yard is at Haworth.** When you shunt, you're in the railway's loco yard behind Haworth's platform, where the
-  real one is. The engine shed stands just past the platform's Oxenhope end with its doors facing Oxenhope, where the
-  yard's lead comes in. The works is on the shed's main-line side, and the DMU siding runs down the side of the works,
-  between it and the main line, and on along the back of the platform: units not working that day are stored there.
-  The coaches wait in the carriage siding down the far side of the shed.
+  real one is. The yard lies close beside the main line and is joined to it beyond the platform's Oxenhope end. Its
+  lead runs straight on into the carriage siding, where the coaches wait alongside the main line, and the shed roads
+  swing away to the engine shed, just past the platform's end with its doors facing Oxenhope. The works is on the
+  shed's main-line side, and the DMU siding runs down the side of the works: units not working that day are stored
+  there.
   It's the same Haworth you drive through, so engines not out that day stand in the shed as you pass.
 - **The drive is real time.** The line isn't squeezed any more: the clock keeps real time while you're moving, and
   each way takes about a quarter of an hour at the 25 mph limit.
