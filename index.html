@@ -428,7 +428,7 @@
   <!-- TIMETABLE -->
   <section class="view" id="v-tt">
     <h2>This Week's Timetable</h2>
-    <p class="lede">Trains start at Keighley, run up the Worth Valley to Oxenhope and back. Give each locomotive (and its carriage set) a list of departure times. Untick stations to make a train run through them without stopping, or untick the ends to make a shuttle (it must start and turn back at a loop, ⇄). The line is single track: trains can only pass at the loops at Damems and Haworth (and Oakworth, if you build one), so the signallers will hold one train at a loop until the other has cleared the single line.</p>
+    <p class="lede">Trains start at Keighley, run up the Worth Valley to Oxenhope and back. Give each locomotive (and its carriage set) a list of departure times. Untick stations to make a train run through them without stopping, or untick the ends to make a shuttle (it must start and turn back at a loop, ⇄). The line is single track: trains can only pass at the loops at Damems and Haworth (and Oakworth, if you build one), so the signallers will hold one train at a loop until the other has cleared the single line. On the Worth Valley's own two-train timetable the trains cross at Damems.</p>
     <div class="toolbar" id="tt-toolbar"></div>
     <div id="tt-event"></div>
     <div class="toolbar">
@@ -437,6 +437,7 @@
       <button class="act small" onclick="applyPreset(2)">2 trains</button>
       <button class="act small" onclick="applyPreset(3)">3 trains</button>
       <button class="act small" onclick="applyPreset(9)">Intensive (all stock)</button>
+      <button class="act small" onclick="applyPreset(2, true)" title="The railway's own Orange timetable: a steam and a diesel train, crossing at Damems on every round trip">Worth Valley Orange (cross at Damems)</button>
       <button class="act small warnbtn" onclick="clearTimetable()">Clear</button>
     </div>
     <div class="htt-pair" id="tt-public"></div>
@@ -859,8 +860,8 @@ function newGame(){
     week: 10,                 // mid-March, start of the running season
     locos: [ivatt, rat],
     rakes: [r4, r6],
-    tt: [ {loco:ivatt.id, rake:r6.id, deps:[600, 750, 900]},
-          {loco:rat.id,   rake:r4.id, deps:[]} ],
+    tt: [ {loco:ivatt.id, rake:r6.id, deps:[...KWVR_ORANGE[0]]},   // the Worth Valley's own two-train service: steam and diesel cross at Damems
+          {loco:rat.id,   rake:r4.id, deps:[...KWVR_ORANGE[1]]} ],
     days: 2,
     marketing: 0,
     weather: "mixed",
@@ -2022,8 +2023,13 @@ function addDep(i){
 function removeDep(i, m){ const d = state.tt[i]; d.deps = d.deps.filter(x=>x!==m); render(); }
 function clearTimetable(){ state.tt.forEach(d=>d.deps=[]); render(); }
 
-// Fill the timetable with an even interval service using the best available stock.
-function applyPreset(n){
+// The Worth Valley's Orange timetable: two trains, steam and heritage diesel, from Keighley at 10:50, 11:40,
+// 12:30 … 16:45, crossing each other at Damems loop on every round. (The real steam train lays over at
+// Oxenhope at lunchtime; here the diesel's 13:40 leaves at 13:30 instead, so they still meet at Damems.)
+const KWVR_ORANGE = [[650, 750, 865, 960], [700, 810, 915, 1005]];
+// Fill the timetable with an even interval service using the best available stock,
+// or (real) with the Orange timetable worked by a steam engine and a diesel.
+function applyPreset(n, real){
   const ev = eventThisWeek();
   const freeRakes = [
     ...evRakes(ev).map(k=>({id:k, cat:catOf("vrake",k)})),
@@ -2038,6 +2044,8 @@ function applyPreset(n){
   // a gala wants its own kind of engine first
   const want = ev && EVENTS[ev.type].need ? EVENTS[ev.type].need.kind : null;
   pool.sort((a,b)=>((b.kind===want)-(a.kind===want)) || b.draw-a.draw);
+  if(real){ const st = pool.find(p=>p.kind==="steam"), ot = pool.find(p=>p!==st && p.kind!=="steam" && p.kind!=="dmu") || pool.find(p=>p!==st);
+    pool.splice(0, pool.length, ...[st, ot, ...pool.filter(p=>p!==st && p!==ot)].filter(Boolean)); }
   const chosen = [];
   const usedRakes = new Set();
   for(const p of pool){
@@ -2048,6 +2056,7 @@ function applyPreset(n){
     usedRakes.add(r.id); chosen.push({loco:p.loco, rake:r.id});
   }
   if(!chosen.length){ alert("No locomotive and carriage set are available to run."); return; }
+  if(real){ state.tt = chosen.map((c,k)=>({loco:c.loco, rake:c.rake, deps:[...KWVR_ORANGE[k]]})); render(); return; }
   // An intensive service tries every number of sets (no fewer than a gala needs) and keeps the
   // one that gets the most trains round on time: the single line, not the fleet, is the limit.
   const minSets = n>=9 ? Math.min(chosen.length, want ? EVENTS[ev.type].need.n : 1) : chosen.length;

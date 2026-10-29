@@ -93,6 +93,12 @@ To rebuild the data, fetch OpenStreetMap for the corridor and the terrain tiles,
   one at Oakworth to split the long section through Mytholmes Tunnel.
 - **You start with 41241** in the lined Worth Valley maroon it wore when the line reopened in 1968, plus 25059 and two
   Mk1 sets.
+- **Trains cross at Damems.** The starting timetable is the railway's own two-train "Orange" timetable: a steam and
+  a heritage diesel train, leaving Keighley at 10:50, 11:40, 12:30, 13:30, 14:25, 15:15, 16:00 and 16:45. On every
+  round they meet at Damems loop, where one train waits at the starter while the other comes down the loop beside it.
+  The real steam train lays over at Oxenhope at lunchtime, so the diesel's 13:40 leaves at 13:30 here to keep the
+  meeting at Damems. The Timetable's **Worth Valley Orange** button puts it back at any time with the best steam
+  engine and diesel you have.
 - **Running costs are per trip.** Coal, oil and wear count each mile about three times over. A round trip on the short
   line then costs what it would on the original game's 14-mile line, so the economy plays the same.
 
