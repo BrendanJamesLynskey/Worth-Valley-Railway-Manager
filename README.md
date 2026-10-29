@@ -15,7 +15,7 @@ share.
 *An unofficial, fan-made game, not connected with the Keighley &amp; Worth Valley Railway. The people and companies who
 write to you in the game are fictional.*
 
-![Haworth from above: the loco yard and shed south of the station, the town on the hill](haworth.png)
+![Haworth from above: the loco yard and shed behind the platform, the town on the hill](haworth.png)
 
 Everything runs in a single self-contained `index.html`, with no build step and no network after load. The world data is
 packed into the page: about 1.1 MB for the line, the land and 12,000 buildings. Progress auto-saves to your browser's
@@ -25,12 +25,12 @@ local storage, under its own name, so it doesn't clash with a Heritage Railway M
 
 | Station | Mile | Height | Loop | What's there |
 |---|---|---|---|---|
-| Keighley | 0 | 97 m | ⇄ | Platforms 3 and 4 beside Network Rail's Airedale Line, platform 4's glass canopy, the water tower, the turntable from Garsdale, the signal box from Bingley Junction |
+| Keighley | 0 | 97 m | ⇄ | Platforms 3 and 4 beside Network Rail's Airedale Line, platform 4's glass canopy; platform 3's road is the run-round loop, with the water tower, the turntable from Garsdale and the signal box from Bingley Junction |
 | Ingrow West | 1.17 | 117 m | | The station building moved from Foulridge, the Museum of Rail Travel's vintage carriages, Ingrow Tunnel (152 m) just beyond |
 | Damems | 1.86 | 134 m | ⇄ | One coach long, the level crossing and its gate box, the passing loop |
 | Oakworth | 2.68 | 154 m | (buildable) | The Railway Children's station: gas lamps, enamel adverts, the level crossing and its ground frame |
-| Haworth | 3.51 | 170 m | ⇄ | The railway's headquarters, the footbridge to the village, and the loco shed and works in the old goods yard |
-| Oxenhope | 4.72 | 196 m | ⇄ | The run-round loop and headshunt, the exhibition shed, the carriage shed, the stone goods shed and the buffet carriage |
+| Haworth | 3.51 | 170 m | ⇄ | The railway's headquarters, the footbridge to the village, and the loco yard behind the platform with the shed and works beyond |
+| Oxenhope | 4.72 | 196 m | ⇄ | The run-round loop and headshunt, the exhibition shed, the carriage shed and the roofed carriage sidings, the stone goods shed and the buffet carriage |
 
 Between Oakworth and Haworth the line crosses the Worth on Mytholmes Viaduct and goes through Mytholmes Tunnel (69 m), on
 the 1892 deviation. The climb is real too. It is 1 in 56 at its steepest, and the section gradients the timetable uses
@@ -48,6 +48,8 @@ The game's 3D world was built from open data, not drawn by hand:
   - It is 8.1 km long, and the station mileages come out right: Ingrow at 1¼ miles, Haworth at 3½ and Oxenhope at 4¾.
   - The platforms, both level crossings, the tunnels and the bridges are placed where OpenStreetMap has them.
   - So are the sidings and yards at Keighley, Ingrow, Oakworth and Oxenhope, and the Network Rail line through Keighley.
+- **East is east.** The survey's coordinates run east, and the game's 3D world draws its x axis the other way, so the
+  data is turned once as it loads. Without that the whole valley would come out as its mirror image.
 - **The land** comes from the [Terrain Tiles on AWS](https://registry.opendata.aws/terrain-tiles/) elevation data. It
   covers the whole valley out to the moor tops, 14 km by 17 km, at 25 m.
   - The railway's formation is a smooth climb fitted to that land and never falls. It is cut through the hills and
@@ -80,8 +82,9 @@ To rebuild the data, fetch OpenStreetMap for the corridor and the terrain tiles,
 
 ## What's Different From Heritage Railway Manager
 
-- **The yard is at Haworth.** When you shunt, you're in the railway's loco yard in the old goods and coal yard just
-  south of Haworth station. The coaches are in the carriage siding and the engines in the shed and works beside it.
+- **The yard is at Haworth.** When you shunt, you're in the railway's loco yard behind Haworth's platform, where the
+  real one is. The coaches are in the carriage siding along the back of the platform, and the engines are in the shed
+  and works beyond it, level with the platform's Keighley half.
   It's the same Haworth you drive through, so engines not out that day stand in the shed as you pass.
 - **The drive is real time.** The line isn't squeezed any more: the clock keeps real time while you're moving, and
   each way takes about a quarter of an hour at the 25 mph limit.
@@ -99,12 +102,18 @@ To rebuild the data, fetch OpenStreetMap for the corridor and the terrain tiles,
   The real steam train lays over at Oxenhope at lunchtime, so the diesel's 13:40 leaves at 13:30 here to keep the
   meeting at Damems. The Timetable's **Worth Valley Orange** button puts it back at any time with the best steam
   engine and diesel you have.
+- **The run-round loops are on your right as you pull in** at both ends. At Oxenhope the loop is opposite the
+  platform. At Keighley it's platform 3's road, on the Network Rail side with the water tower and the turntable, and
+  platform 4 with its canopy is on the main road.
+- **The carriage sidings at Oxenhope are roofed.** The coaches stand in the sidings under a steel-framed, open-sided
+  roof on green stanchions, one span over each road, beside the carriage shed of the railway's Carriage & Wagon
+  department.
 - **Running costs are per trip.** Coal, oil and wear count each mile about three times over. A round trip on the short
   line then costs what it would on the original game's 14-mile line, so the economy plays the same.
 
-![Oxenhope: the exhibition shed, the carriage shed and carriage sidings, the goods shed and the buffet car](oxenhope.png)
+![Oxenhope: the carriage shed and the roofed carriage sidings with Mk1 coaches, the platform beyond](oxenhope.png)
 
-![Keighley: the Worth Valley's platforms beside the Airedale Line](keighley.png)
+![Keighley: the water tower and signal box by platform 3, the Worth Valley's platforms beside the Airedale Line](keighley.png)
 
 ![Ingrow West, with Ingrow Tunnel beyond](ingrow.png)
 
