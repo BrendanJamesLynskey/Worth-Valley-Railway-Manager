@@ -103,7 +103,11 @@ To rebuild the data, fetch OpenStreetMap for the corridor and the terrain tiles,
   round they meet at Damems loop, where one train waits at the starter while the other comes down the loop beside it.
   The real steam train lays over at Oxenhope at lunchtime, so the diesel's 13:40 leaves at 13:30 here to keep the
   meeting at Damems. The Timetable's **Worth Valley Orange** button puts it back at any time with the best steam
-  engine and diesel you have.
+  engine and diesel you have. The **2 trains** pattern is timed the same way, so the two trains meet at Damems
+  every round and never pass at Keighley, and the projection warns you if a timetable of your own has them passing
+  anywhere else. (Three or more trains can't all meet at Damems, so they cross at Haworth and Oxenhope as well.)
+- **A Keighley–Ingrow shuttle runs first.** A DMU can turn back at Ingrow West, with no loop, by changing ends. A
+  shuttle like that runs its service first, and the trains for Oxenhope leave Keighley once it has finished.
 - **The run-round loops are on your right as you pull in** at both ends. At Oxenhope the loop is opposite the
   platform. At Keighley it's platform 3's road, on the Network Rail side with the water tower and the turntable, and
   platform 4 with its canopy is on the main road.

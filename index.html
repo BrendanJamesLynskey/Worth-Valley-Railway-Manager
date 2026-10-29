@@ -428,7 +428,7 @@
   <!-- TIMETABLE -->
   <section class="view" id="v-tt">
     <h2>This Week's Timetable</h2>
-    <p class="lede">Trains start at Keighley, run up the Worth Valley to Oxenhope and back. Give each locomotive (and its carriage set) a list of departure times. Untick stations to make a train run through them without stopping, or untick the ends to make a shuttle (it must start and turn back at a loop, ⇄). The line is single track: trains can only pass at the loops at Damems and Haworth (and Oakworth, if you build one), so the signallers will hold one train at a loop until the other has cleared the single line. On the Worth Valley's own two-train timetable the trains cross at Damems.</p>
+    <p class="lede">Trains start at Keighley, run up the Worth Valley to Oxenhope and back. Give each locomotive (and its carriage set) a list of departure times. Untick stations to make a train run through them without stopping, or untick the ends to make a shuttle (it must start and turn back at a loop, ⇄, though a DMU can turn back anywhere, so it can run a Keighley–Ingrow shuttle). The line is single track: trains can only pass at the loops at Damems and Haworth (and Oakworth, if you build one), so the signallers will hold one train at a loop until the other has cleared the single line. Two trains always cross at Damems, as on the Worth Valley's own timetable: the <b>2 trains</b> and <b>Worth Valley Orange</b> patterns time them to meet there every round, and the projection warns you if yours pass anywhere else. A Keighley–Ingrow shuttle runs its service first, and the Oxenhope trains start once it has finished.</p>
     <div class="toolbar" id="tt-toolbar"></div>
     <div id="tt-event"></div>
     <div class="toolbar">
@@ -1086,8 +1086,10 @@ function routeOf(d){
   const list = Array.isArray(d.stops) ? [...d.stops].filter(k=>k>=0 && k<N).sort((a,b)=>a-b) : STATIONS.map((_,k)=>k);
   if(list.length<2) return {err:"Tick at least two stations for this train to call at."};
   const lo = list[0], hi = list[list.length-1];
-  for(const k of [lo,hi]) if(!loops.has(k))
-    return {err:`${STATIONS[k].name} has no loop, so an engine can't run round there. A train can only start or turn back at ${[...loops].sort((a,b)=>a-b).map(j=>STATION_SHORT[j]).join(", ")}.`};
+  // a unit just changes ends, so it can turn back short at a station with no loop (a Keighley–Ingrow shuttle)
+  const unit = (state.locos.find(l=>l.id===d.loco) || {}).kind==="dmu";
+  for(const k of [lo,hi]) if(!loops.has(k) && !(unit && k===hi))
+    return {err:`${STATIONS[k].name} has no loop, so an engine can't run round there. A train can only start or turn back at ${[...loops].sort((a,b)=>a-b).map(j=>STATION_SHORT[j]).join(", ")}${unit ? " (a DMU can turn back anywhere above where it starts)" : ""}.`};
   return {lo, hi, stops:new Set(list), shuttle: lo>0 || hi<N-1};
 }
 // Look up a diagram's engine (one of ours by id, or a guest by key) and check it can run.
@@ -1149,6 +1151,8 @@ function ecsMinutes(set){ let t = 0; for(let s=0;s<(set.lo||0);s++) t += segMinu
 // A shuttle (set.lo > 0 or set.hi < Oxenhope) runs out empty from the shed first thing, lays
 // over between trips in the bay at its bottom end (clear of the loop), and runs home empty at night.
 // Stations not in set.stops are passed without stopping.
+// A shuttle that never gets past Damems from Keighley (Keighley to Ingrow and back) runs its service first: the
+// trains for Oxenhope don't leave Keighley until it has finished, so they always have the bottom section to themselves.
 // failTrip: per set, the trip on which it fails at the top end (-1 = none).
 function simulateDay(sets, failTrip){
   const loops = loopSet(), N = STATIONS.length, LAST = N-1;
@@ -1164,12 +1168,14 @@ function simulateDay(sets, failTrip){
     path:[], trips:[], hold:null, waitSince:0, waitNow:0, cur:null, failed:false, done:false,
     ecs: (s.lo||0)>0 && s.deps.length ? "out" : null, ecsLead: ecsMinutes(s)+15, ecsMiles:0, inBay:false}));
   const stopsAt = (a,st) => !a.s.stops || a.s.stops.has(st);
+  const DAM = STATIONS.findIndex(q=>q.key==="DAM"), bottom = a => a.lo===0 && a.hi < DAM;
+  const shuttling = () => A.some(b=>bottom(b) && !b.done && (b.trip < b.s.deps.length || b.cur));
   let deadlock = null, holds = 0, holdMins = 0;
 
   function arrive(a,t){
     a.st += a.dir; const st = a.st;
     a.path.push({t, m:STATIONS[st].mile});
-    if(loops.has(st)){ tokens[a.hold]=null; a.hold=null; resv[st][dk(a.dir)]--; if(st!==0) occ[st][dk(a.dir)]++; }
+    if(loops.has(st)){ tokens[a.hold]=null; a.hold=null; if(a.res){ resv[a.res[0]][a.res[1]]--; a.res = null; } if(st!==0) occ[st][dk(a.dir)]++; }
     a.ecsMiles += Math.abs(STATIONS[st].mile - STATIONS[st-a.dir].mile) * (a.cur.ecs?1:0);
     if(a.cur.ecs){                              // empty stock: non-stop
       if(a.ecs==="out" && st===a.lo){ occ[st].u--; a.inBay = true; a.ecs = null; a.phase = "idle"; a.readyAt = t; a.cur = null; }
@@ -1200,7 +1206,7 @@ function simulateDay(sets, failTrip){
       else if(a.phase==="idle" && !a.done && a.ecs==="out"){
         if(t >= a.s.deps[0] - a.ecsLead){ a.cur = {ecs:true}; a.dir = 1; a.phase = "want"; a.waitSince = t; }
       }
-      else if(a.phase==="idle" && !a.done && a.trip<a.s.deps.length && t>=a.s.deps[a.trip] && t>=a.readyAt){
+      else if(a.phase==="idle" && !a.done && a.trip<a.s.deps.length && t>=a.s.deps[a.trip] && t>=a.readyAt && (bottom(a) || a.lo>0 || !shuttling())){
         a.cur = {sched:a.s.deps[a.trip], dep:null, arrTop:null, arrHome:null, wait:0, failed:false, calls:[]};
         a.trips.push(a.cur); a.dir = 1; a.phase = "want"; a.waitSince = t;
       }
@@ -1212,7 +1218,7 @@ function simulateDay(sets, failTrip){
       if(loops.has(st)){
         const dest = nextLoop(st, a.dir), kk = key(st, dest);
         if(tokens[kk]!=null || !room(dest, a.dir)) ok = false;
-        if(ok){ tokens[kk]=a.k; a.hold=kk; resv[dest][dk(a.dir)]++; if(st!==0 && !a.inBay) occ[st][dk(a.dir)]--; }
+        if(ok){ tokens[kk]=a.k; a.hold=kk; resv[dest][dk(a.dir)]++; a.res = [dest, dk(a.dir)];   /* a unit turning back short of dest gives it up when it gets back */ if(st!==0 && !a.inBay) occ[st][dk(a.dir)]--; }
       }
       if(ok){
         a.inBay = false;
@@ -1253,6 +1259,25 @@ function simulateDay(sets, failTrip){
   trips.sort((x,y)=>x.sched-y.sched);
   return {agents:A.map(a=>({k:a.k, label:a.s.label, colour:a.s.colour, kind:a.s.kind, path:a.path, failed:a.failed})),
           ecs:A.filter(a=>a.ecsMiles>0).map(a=>({set:a.s, miles:a.ecsMiles})), trips, deadlock, holds, holdMins};
+}
+
+// Where the trains of a simulated day pass each other: wherever two trains change places along the line, at the
+// station where they last stood level (on the Worth Valley that should be Damems loop).
+function simCrossings(sim){
+  const A = sim.agents, out = [];
+  for(let i=0;i<A.length;i++) for(let j=i+1;j<A.length;j++){
+    let last = 0, eq = null;
+    for(let t=SIM_START; t<=SIM_END; t+=DT){
+      const a = agentMile(A[i], t), b = agentMile(A[j], t);
+      if(a==null || b==null){ last = 0; eq = null; continue; }
+      if(Math.abs(a - b) < 0.02) eq = (a + b)/2;
+      const sg = Math.abs(a - b) < 1e-6 ? 0 : Math.sign(a - b);
+      if(sg && last && sg!==last){ const m = eq!=null ? eq : (a + b)/2;
+        out.push({t, st:STATIONS.reduce((k,q,n)=>Math.abs(q.mile - m) < Math.abs(STATIONS[k].mile - m) ? n : k, 0)}); }
+      if(sg){ last = sg; eq = null; }
+    }
+  }
+  return out.sort((x,y)=>x.t-y.t);
 }
 
 /* ============================ PASSENGERS & MONEY ============================ */
@@ -1724,6 +1749,7 @@ function renderTimetable(){
       <h3 style="margin-top:0">Projection: ${nDays} day${nDays>1?"s":""} ${ev?`of the ${EVENTS[ev.type].name}`:"of normal service"}</h3>
       ${!volOk?`<div class="event bad">⚠️ <b>Volunteer shortfall:</b> each day needs ${plan.volNeed} but only ${plan.volAvail} are available. You can't run this.</div>`:""}
       ${sim.deadlock?`<div class="event bad">🔒 <b>Lock-up at ${sim.deadlock.at} at ${fmtT(sim.deadlock.t)}.</b> Every loop is full and no train can move. The rest of the day is cancelled. Thin out the trains or build another loop.</div>`:""}
+      ${crossNote(sim, plan)}
       ${sim.holds?`<div class="event">🚦 Trains are held at loops ${sim.holds} time${sim.holds>1?"s":""} (${Math.round(sim.holdMins)} min in all) waiting for the single line.</div>`:""}
       ${res.turned>40?`<div class="event bad">🚶 About ${res.turned} people a day are turned away from full trains. Add trains or longer sets.</div>`:""}
       ${res.notes.map(n=>`<div class="event ${n.cls}">${n.text}</div>`).join("")}
@@ -1742,6 +1768,18 @@ function renderTimetable(){
   document.getElementById("tt-graph").innerHTML = sim ? trainGraph(sim, plan, null) : `<p class="sub" style="padding:10px">No trains planned.</p>`;
 }
 
+// where the trains cross, and a warning for any that pass anywhere but Damems; a Keighley shuttle runs its service first
+function crossNote(sim, plan){
+  const X = simCrossings(sim), DAM = STATIONS.findIndex(q=>q.key==="DAM"), off = X.filter(x=>x.st!==DAM), o = [];
+  const sh = plan.sets.filter(s=>s.deps.length && !s.lo && s.hi!=null && s.hi < DAM);
+  if(sh.length && plan.sets.some(s=>s.deps.length && !sh.includes(s)))
+    o.push(`<div class="event">🚃 <b>The ${STATIONS[sh[0].hi].name} shuttle runs its service first.</b> The trains for Oxenhope don't leave Keighley until it has finished its last trip, so give it the morning and start the main service after it.</div>`);
+  if(X.length && !off.length) o.push(`<div class="event good">🔀 The trains cross at Damems loop, ${X.length===1?"once":`all ${X.length} times`}.</div>`);
+  const main = plan.sets.filter(s=>s.deps.length && !sh.includes(s)).length, where = [...new Set(off.map(x=>STATIONS[x.st].name))].join(", ").replace(/, ([^,]*)$/, " and $1");
+  if(off.length && main <= 2) o.push(`<div class="event bad">🔀 <b>The trains pass each other at ${where}</b> (${off.slice(0, 4).map(x=>fmtT(x.t)).join(", ")}${off.length>4?"…":""}), not at Damems. The Worth Valley crosses its two trains at Damems loop: space the departures so each train meets the other there, as the <b>2 trains</b> and <b>Worth Valley Orange</b> patterns do.</div>`);
+  else if(off.length) o.push(`<div class="event">🔀 With ${main} trains out they can't all meet at Damems: they cross ${X.length - off.length} times at Damems and ${off.length} at ${where}. Two trains cross at Damems every time.</div>`);
+  return o.join("");
+}
 // The leaflet timetable: Up and Down tables, a column per train, a row per station.
 // Times are as the signallers will work them (from the simulated day), so held trains show late.
 const ttTime = m => { m = Math.round(m); return Math.floor(m/60) + "." + String(m%60).padStart(2,"0"); };
@@ -2080,8 +2118,10 @@ function applyPreset(n, real){
   state.tt = best.diagrams;
   render();
 }
-// Try ever wider intervals: set k leaves at start + k*headway, and each set comes round
-// every n*headway (at least its own cycle). Returns the interval with the best score.
+// Try every headway and cycle: set k leaves at start + k*headway, and each set comes round every cycle (at least
+// its own round trip and turn-round). Returns the pattern with the best score. Two trains are timed to cross
+// at Damems on every round, as the Worth Valley's own timetables do (headway and cycle are tried together for that);
+// more trains must cross elsewhere too, but never pass at Keighley if a pattern can help it.
 function presetFor(chosen, ev){
   const old = state.tt;
   state.tt = chosen.map(c=>({loco:c.loco, rake:c.rake, deps:[600]}));
@@ -2089,16 +2129,20 @@ function presetFor(chosen, ev){
   state.tt = old;
   const cyc = Math.max(...sets.map(s=>idealRound(s)+turnHome(s)), 120);
   const late = ev && ev.type==="beerfest" ? 20*60 : ev && ev.type==="santa" ? 15*60+30 : 17*60+30;
-  const build = h => { const step = Math.max(Math.ceil((cyc+5)/5)*5, h*chosen.length);
+  const n = chosen.length, two = n===2, c5 = Math.ceil((Math.max(...sets.map(s=>idealRound(s)+turnHome(s)))+5)/5)*5, DAM = STATIONS.findIndex(q=>q.key==="DAM");
+  const build = (h, P) => { const step = P || Math.max(c5, h*chosen.length);
     return chosen.map((c,k)=>{ const deps=[]; for(let m=9*60+45+k*h; m<=late; m+=step) deps.push(m); return deps; }); };
   let best = null, bestScore = -1;
-  for(let h=Math.max(20, Math.floor(cyc/chosen.length/5)*5); h<=240; h+=5){
-    const depsets = build(h);
+  for(const P of [0, 5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100].map(d=>c5 + d))
+  for(let h = n>1 ? 20 : 0; h <= (n>1 ? (P - 20)/(n - 1) : 0); h+=5){
+    const depsets = build(h, P);
     sets.forEach((s,k)=>s.deps = depsets[k]);
     const sim = simulateDay(sets.filter(s=>s.deps.length), null);
     const ran = sim.trips.filter(t=>!t.cancelled);
     const avg = ran.reduce((a,t)=>a+t.delay,0)/(ran.length||1);
-    const score = (avg<=4 && ran.length===sim.trips.length ? 1000 : 0) + ran.length*10 - avg;
+    const X = simCrossings(sim);
+    const score = (avg<=4 && ran.length===sim.trips.length ? 1000 : 0) + ran.length*10 - avg
+      - (two ? 200*X.filter(x=>x.st!==DAM).length : 30*X.filter(x=>x.st===0).length);
     if(score > bestScore){ bestScore = score; best = depsets; }
   }
   return {score:bestScore, diagrams: chosen.map((c,k)=>({loco:c.loco, rake:c.rake, deps:best[k]}))};
