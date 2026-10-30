@@ -633,7 +633,7 @@ const KW_MILE = st => ((st.s0 + st.s1)/2 - S_KEI)/1609.34;
 const STATIONS = [
   {key:"KEI", name:"Keighley",    loop:true,  blurb:"Shared with Network Rail's Airedale Line. The Worth Valley's platforms 3 and 4, with platform 4's glass canopy, the water tower, the turntable from Garsdale and the signal box from Bingley Junction. Every train starts and ends here."},
   {key:"ING", name:"Ingrow West", loop:false, blurb:"Its station building was brought brick by brick from Foulridge. The Vintage Carriages Trust's Museum of Rail Travel and the Bahamas Locomotive Society's engine shed are in the yard; Ingrow Tunnel starts just beyond the platform."},
-  {key:"DAM", name:"Damems",      loop:true,  blurb:"The smallest station in the country, one coach long, with its level crossing, the gate box from Earby and the passing loop laid in 1971."},
+  {key:"DAM", name:"Damems",      loop:true,  blurb:"The smallest station in the country, one coach long, with its level crossing, the gate box from Earby and, beyond the crossing, the passing loop laid in 1971."},
   {key:"OAK", name:"Oakworth",    loop:false, blurb:"The Railway Children's station: gas lamps, enamel adverts and the level crossing at the Haworth end. A passing loop here would split the long Damems–Haworth section."},
   {key:"HAW", name:"Haworth",     loop:true,  blurb:"The railway's headquarters, with the loco yard behind the platform beside the main line: the shed just past its Oxenhope end, the works beside it and the DMU siding. The Brontë Parsonage is at the top of Main Street, up the hill."},
   {key:"OXE", name:"Oxenhope",    loop:true,  blurb:"Terminus at 660 ft, at the head of the valley: the run-round loop, the exhibition shed, the carriage shed and the buffet car."}
@@ -1490,7 +1490,7 @@ function settleWeek(plan, report, mk){
                     + (sim.ecs||[]).filter(e=>e.set===s).reduce((a,e)=>a+e.miles,0);
         const failed = sim.trips.some(t=>t.set===s && t.failed);
         const wearOn = (loco, cat, guest, k) => { if(guest) return;
-          const lw = miles*MILE_SCALE/3300 * cat.wear * (k==="steam"?1.25:1) * (1 + 0.3*Math.min(1,s.cars/s.maxHaul));
+          const lw = miles*MILE_SCALE/6600 * cat.wear * (k==="steam"?1.25:1) * (1 + 0.3*Math.min(1,s.cars/s.maxHaul));
           loco.condition = Math.max(0.03, loco.condition - lw - (failed?0.1:0)); };
         wearOn(s.loco, s.lcat, s.trainGuest, s.loco.kind);
         if(s.pilot) wearOn(s.pilot, s.pcat, s.pilotGuest, s.pilot.kind);
@@ -2858,7 +2858,7 @@ function maybeMail(){
   const max = r50(V*(1.05 + Math.random()*0.3));
   const fee = r50(Math.min(max - 100, V*(0.72 + Math.random()*0.13)));
   const deal = {kind, locoId:loco.id, number:loco.number, start, weeks, fee, max, status:"open",
-    patience: kind==="railtour" ? 2 : 3, wear: kind==="railtour" ? 0.07 : kind==="gala" ? 0.035*weeks : 0.02*weeks, rep: kind==="railtour" ? 2 : 1};
+    patience: kind==="railtour" ? 2 : 3, wear: kind==="railtour" ? 0.035 : kind==="gala" ? 0.0175*weeks : 0.01*weeks, rep: kind==="railtour" ? 2 : 1};
   const her = loco.kind==="steam" ? "her" : "it";
   const when = weeks>1 ? `for ${weeks} weeks from the weekend of ${dateLabel(start)}` : `for the weekend of ${dateLabel(start)}`;
   let from, subject, body;
@@ -5698,7 +5698,19 @@ function line3(){
     G.side[0] = -tt; }
   // the points at each end of a loop; at Oxenhope the loop closes up short of the buffer stops, leaving a headshunt
   G.toe = G.plat.map(([p0, p1])=>[Math.max(40, p0 - 60), Math.min(L - 48, p1 + 60)]);
-  G.stopAt = (i, dir) => { const [p0, p1] = G.plat[i], [a, b] = G.toe[i]; return dir > 0 ? Math.min(p1 - 6, b - 16) : Math.max(p0 + 6, a + 16); };
+  // at Damems the loop lies beyond the level crossing, with the platform and the crossing on its Keighley side
+  { const d = STATIONS.findIndex(q=>q.key==="DAM"); G.toe[d] = [KW.lx[0] + 26, KW.lx[0] + 246]; }
+  G.out = new Set(G.toe.map(([a, b], i)=>G.lp.has(i) && (G.plat[i][1] < a || G.plat[i][0] > b) ? i : -1).filter(i=>i >= 0));   // a loop clear of its platform
+  G.stopAt = (i, dir) => { const [p0, p1] = G.plat[i], [a, b] = G.toe[i]; if(G.out.has(i)) return dir > 0 ? p1 - 6 : p0 + 6;
+    return dir > 0 ? Math.min(p1 - 6, b - 16) : Math.max(p0 + 6, a + 16); };
+  // where a train stands to cross another: in the loop (at the platform, where the loop runs alongside it)
+  G.stand = (i, dir) => { if(!G.out.has(i)) return G.stopAt(i, dir); const [a, b] = G.toe[i]; return dir > 0 ? b - 16 : a + 16; };
+  G.inLoop = (i, s) => s >= G.toe[i][0] && s <= G.toe[i][1];
+  // the other trains run between where they stand at each station, so they draw up in the loops without a jump
+  G.sOther = (m, dir) => { const K = STATIONS.map((q, i)=>[q.mile, G.stand(i, dir)]);
+    if(m <= K[0][0]) return G.sOfMile(m) + K[0][1] - G.sOfMile(K[0][0]);
+    for(let i=0;i<K.length-1;i++) if(m <= K[i+1][0]){ const f = (m - K[i][0])/((K[i+1][0] - K[i][0]) || 1); return K[i][1] + (K[i+1][1] - K[i][1])*f; }
+    return G.sOfMile(m) + K[K.length-1][1] - G.sOfMile(K[K.length-1][0]); };
   // the loop road swings out on the far side from the platform
   G.loopOff = (i, s) => { const [a, b] = G.toe[i]; if(s < a || s > b) return 0; return -G.side[i]*4.6*Math.min(smooth01((s - a)/45), smooth01((b - s)/45)); };
   G.tuns = KW.tun; G.bris = KW.bri;
@@ -5955,7 +5967,7 @@ function kwTrack(A, At, G, T){
         const q = G.at((s + e)/2, off - Math.sign(off)*1.85); box(a, q.x, q.y + 1.01, q.z, 0.3, 0.02, e - s, [.95,.92,.8], q.yaw); } };
     plat(sd*3.6); if(i===0) plat(-sd*8.2);
     if(G.lp.has(i)) for(const dir of [1,-1]){ if((i===0 && dir<0) || (i===STATIONS.length-1 && dir>0)) continue;
-      const ss = G.stopAt(i, dir) + dir*16, q = G.at(ss, sd*2.6), a = A(q.x, q.z);
+      const ss = G.out.has(i) ? G.stand(i, dir) + dir*8 : G.stopAt(i, dir) + dir*16, q = G.at(ss, sd*2.6), a = A(q.x, q.z);
       box(a, q.x, q.y + 2.4, q.z, 0.16, 4.8, 0.16, SC.dark, q.yaw); box(a, q.x, q.y + 4.6, q.z, 0.5, 0.9, 0.3, B0, q.yaw);
       G.sigs.push({i, dir, s:ss, x:q.x, y:q.y + 4.6, z:q.z, yaw:q.yaw}); }
   });
@@ -6524,18 +6536,32 @@ function dSection(st, dir){
 function dOurSection(){
   const c = dv.work.calls[dv.ci], lp = dv.G.lp;
   if(dv.phase==="rr"){ const a = dSection(c.st, -1), b = dSection(c.st, 1); return [Math.min(a[0], b[0]), Math.max(a[1], b[1])]; }   // nobody comes in while you run round
-  if(dv.phase==="stand" && lp.has(c.st)) return dv.cleared ? dSection(c.st, dv.dir) : null;
-  const m = dv.G.mileOfS(Math.max(0, Math.min(dv.G.L, dv.s)));
-  let lo = 0, hi = STATIONS.length-1;
-  STATIONS.forEach((q,i)=>{ if(!lp.has(i)) return; if(q.mile <= m + 1e-6 && (dv.dir > 0 || q.mile < m - 0.02)) lo = Math.max(lo, i); });
-  STATIONS.forEach((q,i)=>{ if(lp.has(i) && i > lo && i < hi && q.mile > m) hi = i; });
-  return [STATIONS[lo].mile, STATIONS[hi].mile];
+  const G = dv.G, inSt = dv.phase==="stand" && lp.has(c.st);
+  if(inSt && (!G.out.has(c.st) || G.inLoop(c.st, dv.s))) return dv.cleared ? dSection(c.st, dv.dir) : null;
+  // out on the line: the sections your front and your back are in (a loop clear of its platform counts from its middle,
+  // so standing at Damems platform you hold the line below the loop), and any you've been signalled into
+  const lm = i => G.out.has(i) ? G.mileOfS((G.toe[i][0] + G.toe[i][1])/2) : STATIONS[i].mile;
+  const sec = s => { const m = G.mileOfS(Math.max(0, Math.min(G.L, s))); let lo = 0, hi = STATIONS.length-1;
+    STATIONS.forEach((q,i)=>{ if(!lp.has(i)) return; if(lm(i) <= m + 1e-6 && (dv.dir > 0 || lm(i) < m - 0.02)) lo = Math.max(lo, i); });
+    STATIONS.forEach((q,i)=>{ if(lp.has(i) && i > lo && i < hi && lm(i) > m) hi = i; });
+    return [STATIONS[lo].mile, STATIONS[hi].mile]; };
+  const r = [sec(dv.s), sec(dv.s - dv.dir*dv.train.len)];
+  if(inSt && dv.cleared) r.push(dSection(c.st, dv.dir));
+  if(dv.entry && dv.entry.clear) r.push(dSection(dv.entry.st, -1));
+  return [Math.min(...r.map(x=>x[0])), Math.max(...r.map(x=>x[1]))];
+}
+// where you stop for the next call: at the platform, or in the loop where the engine has to run round
+function dStopFor(n){
+  const G = dv.G, last = dv.ci + 1===dv.work.calls.length - 1;
+  const turn = G.out.has(n.st) && dv.set.kind!=="dmu" && (n.dirOut && n.dirOut!==dv.dir || last && dv.work.mode==="out");
+  return turn ? {s:G.stand(n.st, dv.dir), r:G.toe[n.st]} : {s:G.stopAt(n.st, dv.dir), r:G.plat[n.st]};
 }
 const dOverlap = (a, b) => a && b && a[0] < b[1] - 1e-6 && b[0] < a[1] - 1e-6;
 const oMile = (o, T) => agentMile(o.a, T - o.d);
 function dSignal(){   // the starter at a loop: off when it's time and the section ahead is clear of other trains
   const c = dv.work.calls[dv.ci], G = dv.G;
   if(!G.lp.has(c.st) || c.dep==null || !c.dirOut) return {here:false, clear:true};
+  if(G.out.has(c.st) && dv.dir < 0 && dv.homed) return {here:false, clear:true};   // the home signal let you on to the platform
   if(dv.cleared) return {here:true, clear:true};
   const [m0, m1] = dSection(c.st, dv.dir);
   const busy = dv.others.some(o=>{ const m = oMile(o, dv.T); return m!=null && m > m0 + 0.02 && m < m1 - 0.02; });
@@ -6599,6 +6625,13 @@ function dStep(dt){
   // passing a starter signal at danger
   for(const sg of G.sigs) if(sg.dir===dv.dir && sg.i===dv.leftSt && (old - sg.s)*(dv.s - sg.s) <= 0 && old!==dv.s && !dv.leftClear){
     dv.leftClear = true; dv.spad++; dMsg("You passed the signal at danger! The signalman is not pleased", true); }
+  // a loop beyond its platform (Damems): coming down, the home signal at the loop's Keighley end lets you on to the
+  // platform once the line to the loop below is clear; until then you wait in the loop while the other train comes up
+  if(dv.phase!=="stand" && n && G.out.has(n.st) && dv.dir < 0 && dv.s < G.toe[n.st][1] + 400){
+    const e = dv.entry && dv.entry.st===n.st ? dv.entry : (dv.entry = {st:n.st, clear:false});
+    if(!e.clear){ const [m0, m1] = dSection(n.st, -1); e.clear = !dv.others.some(o=>{ const m = oMile(o, dv.T); return m!=null && m > m0 + 0.02 && m < m1 - 0.02; });
+      for(const sg of G.sigs) if(!e.clear && sg.i===n.st && sg.dir < 0 && (old - sg.s)*(dv.s - sg.s) <= 0 && old!==dv.s){
+        e.clear = true; dv.spad++; dMsg("You passed the signal at danger! The signalman is not pleased", true); } } }
   if(dv.phase==="stand"){
     if(dv.boarded < 1) dv.boarded = Math.min(1, dv.boarded + dt/(DWELL*60/clock));
     if(dv.v > 0.2 && dv.moveT==null) dv.moveT = dv.T;
@@ -6610,14 +6643,15 @@ function dStep(dt){
       dv.log.push({st:c.st, dep:dv.moveT ?? dv.T, booked:c.dep}); dv.phase = "run"; dv.moveT = null; dHud(); }
   } else {
     // calling, passing and overrunning the next station
-    const stopS = G.stopAt(n.st, dv.dir), past = (dv.s - stopS)*dv.dir, [p0, p1] = G.plat[n.st];
-    if(!n.stop && past > 0){ dv.ci++; dv.log.push({st:n.st, pass:dv.T, booked:n.arr}); dv.phase = "run"; dHud(); return; }
+    const stop = dStopFor(n), stopS = stop.s, past = (dv.s - stopS)*dv.dir, [p0, p1] = stop.r;
+    if(!n.stop && past > 0){ dv.entry = null; dv.ci++; dv.log.push({st:n.st, pass:dv.T, booked:n.arr}); dv.phase = "run"; dHud(); return; }
     if(n.stop && dv.v < 0.05 && past > -28 && dv.s >= p0 - 1 && dv.s <= p1 + 1 || n.stop && past > 30){
       if(past > 30){ dv.overrun++; dMsg(`You overran ${STATIONS[n.st].name}! Set back and call`, true); dv.s = stopS; dv.v = 0; }
       else if(past > 8){ dv.overrun++; dMsg(`A bit past the stop board at ${STATIONS[n.st].name}`, true); }
       const late = dv.T - n.arr;
       dv.log.push({st:n.st, arr:dv.T, booked:n.arr, late});
       dv.ci++; dv.phase = "stand"; dv.boarded = 0; dv.v = 0; dv.thr = 0; dv.standS = dv.s; dv.leftSt = null; dv.cleared = false;
+      dv.homed = !!(dv.entry && dv.entry.st===n.st && dv.entry.clear); dv.entry = null;
       const now = dv.work.calls[dv.ci], last = dv.ci===dv.work.calls.length-1;
       // where the train turns back the engine runs round it (at the end of a one-way trip too); a unit changes ends
       const turn = now.dirOut && now.dirOut!==dv.dir ? now.dirOut : last && dv.work.mode==="out" && dv.set.kind!=="dmu" && G.lp.has(now.st) ? -dv.dir : 0;
@@ -6780,10 +6814,8 @@ function dOtherPlace(o){
     const P = o.a.path, T = dv.T - o.d, i = P.findIndex((p, j)=>j < P.length-1 && T >= p.t && T <= P[j+1].t);
     if(i >= 0){ let j = i, k = i + 1; while(j > 0 && Math.abs(P[j-1].m - m) < 1e-6) j--; while(k < P.length && Math.abs(P[k].m - m) < 1e-6) k++;
       const din = j > 0 ? Math.sign(m - P[j-1].m) : 0, dout = k < P.length ? Math.sign(P[k].m - m) : 0;
-      if(din && dout && din!==dout){ const sIn = G.stopAt(st, din); return T > P[j].t + 4 ? {s:sIn - din*o.train.len, dir:dout, st} : {s:sIn, dir:din, st}; } } }
-  const s = st >= 0 ? G.stopAt(st, o.dir) : G.sOfMile(m);
-  const front = G.sOfMile(m), f = st >= 0 ? s : front;
-  return {s:f, dir:o.dir, st};
+      if(din && dout && din!==dout){ const sIn = G.stand(st, din); return T > P[j].t + 4 ? {s:sIn - din*o.train.len, dir:dout, st} : {s:sIn, dir:din, st}; } } }
+  return {s:st >= 0 ? G.stand(st, o.dir) : G.sOther(m, o.dir), dir:o.dir, st};
 }
 const dLoopOff = q => { const G = dv.G; for(const i of G.lp){ const v = G.loopOff(i, q); if(v) return v; } return 0; };
 function m4at(x, y, z, yaw){ const c = Math.cos(yaw), s = Math.sin(yaw); return new Float32Array([c,0,-s,0, 0,1,0,0, s,0,c,0, x,y,z,1]); }
@@ -6826,7 +6858,8 @@ function driveDraw(){
     trainPoses(G, dConsist(o.set, o.train, o.trainDn, p0.dir), p0.s, p0.dir, dLoopOff).forEach(p=>glDraw(p.v.plain || p.v.mesh, m4at(p.x, p.y, p.z, p.yaw + (p.v.flip ? Math.PI : 0)))); }
   // starter signals
   const here = dSignal();
-  for(const sg of G.sigs){ const off = sg.dir===dv.dir && (dv.phase==="stand" ? here.here && here.clear && sg.i===dv.work.calls[dv.ci].st : sg.i===dv.leftSt && dv.leftClear), on = !off;
+  for(const sg of G.sigs){ const home = G.out.has(sg.i) && sg.dir < 0 && dv.entry && dv.entry.st===sg.i;
+    const off = sg.dir===dv.dir && (home ? dv.entry.clear : dv.phase==="stand" ? here.here && here.clear && sg.i===dv.work.calls[dv.ci].st : sg.i===dv.leftSt && dv.leftClear), on = !off;
     const fwd = [Math.sin(sg.yaw), Math.cos(sg.yaw)], f = -sg.dir*0.18;
     glDraw(on ? dv.sigMesh.r : dv.sigMesh.g, m4at(sg.x + fwd[0]*f, sg.y + 0.15, sg.z + fwd[1]*f, sg.yaw)); }
   // nameboards
@@ -6923,7 +6956,7 @@ function dInfo(){
     next = `<b>Running round</b> · ${dRunRoundHint()}<div class="ysub">Reverser ${r.stage==="wait" ? "—" : r.mv===r.dIn ? "forward" : "reverse"} · points: ${["head","tail"].map(e=>`${dEndName(r, e)} <b>${r.pts[e]}</b>`).join(", ")}</div>`; }
   else if(dv.phase==="stand") next = c.dep==null ? "End of the shift" : sig.here ? (sig.clear ? "<b>Signal off: right away!</b>" : `Starter at danger${dv.T < c.dep ? " until " + dTime(c.dep) : ": section occupied"}`)
       : dv.T >= c.dep - 0.01 && dv.boarded >= 1 ? "<b>Right away!</b>" : `Right away at ${dTime(c.dep)}${dv.boarded < 1 ? " · passengers boarding" : ""}`;
-  else if(n) next = `${n.stop ? "Next stop" : "Passing"} <b>${STATIONS[n.st].name}</b> ${n.stop ? "arr " + dTime(n.arr) : ""} · ${Math.max(0, Math.round((G.stopAt(n.st, dv.dir) - dv.s)*dv.dir))} m`;
+  else if(n) next = `${n.stop ? "Next stop" : "Passing"} <b>${STATIONS[n.st].name}</b> ${n.stop ? "arr " + dTime(n.arr) : ""} · ${Math.max(0, Math.round((dStopFor(n).s - dv.s)*dv.dir))} m`;
   document.getElementById("dInfo").innerHTML = `<div class="ysub">${dv.set.loco.number} ${dv.set.lcat.name} · ${dv.dir>0 ? "up to Oxenhope" : "down to Keighley"}</div>
     <div class="yspeed" style="${mph > DRV.lim + 2 ? "color:#ff8a7a" : ""}">${mph.toFixed(0)} <span style="font-size:.9rem">mph</span> <span class="ysub" style="font-size:.8rem">limit ${DRV.lim}</span></div>
     <div class="dlevers"><span class="ysub">${steam ? "Regulator" : "Throttle"}</span><div class="dlever"><span style="width:${dv.thr*100}%;background:#5fbf6a"></span></div><b>${Math.round(dv.thr*100)}%</b>

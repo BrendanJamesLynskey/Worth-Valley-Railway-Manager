@@ -27,7 +27,7 @@ local storage, under its own name, so it doesn't clash with a Heritage Railway M
 |---|---|---|---|---|
 | Keighley | 0 | 97 m | ⇄ | Platforms 3 and 4 beside Network Rail's Airedale Line, platform 4's glass canopy; platform 3's road is the run-round loop, with the water tower, the turntable from Garsdale and the signal box from Bingley Junction |
 | Ingrow West | 1.17 | 117 m | | The station building moved from Foulridge, the Museum of Rail Travel's vintage carriages, Ingrow Tunnel (152 m) just beyond |
-| Damems | 1.86 | 134 m | ⇄ | One coach long, the level crossing and its gate box, the passing loop |
+| Damems | 1.86 | 134 m | ⇄ | One coach long, the level crossing and its gate box, and the passing loop beyond the crossing on the Oxenhope side |
 | Oakworth | 2.68 | 154 m | (buildable) | The Railway Children's station: gas lamps, enamel adverts, the level crossing and its ground frame |
 | Haworth | 3.51 | 170 m | ⇄ | The railway's headquarters, the footbridge to the village, and the loco yard behind the platform, joined to the main line: the shed just past its Oxenhope end, facing Oxenhope, the works on its main-line side and the DMU siding |
 | Oxenhope | 4.72 | 196 m | ⇄ | The run-round loop and headshunt, the exhibition shed, the carriage shed and the roofed carriage sidings, the stone goods shed and the buffet carriage |
@@ -101,7 +101,9 @@ To rebuild the data, fetch OpenStreetMap for the corridor and the terrain tiles,
   Mk1 sets.
 - **Trains cross at Damems.** The starting timetable is the railway's own two-train "Orange" timetable: a steam and
   a heritage diesel train, leaving Keighley at 10:50, 11:40, 12:30, 13:30, 14:25, 15:15, 16:00 and 16:45. On every
-  round they meet at Damems loop, where one train waits at the starter while the other comes down the loop beside it.
+  round they meet at Damems loop. The loop lies beyond the level crossing, clear of the platform: the up train calls
+  at the platform and runs on into the loop, and the down train waits in the loop at the home signal until the up
+  train is in, then runs down to the platform.
   The real steam train lays over at Oxenhope at lunchtime, so the diesel's 13:40 leaves at 13:30 here to keep the
   meeting at Damems. The Timetable's **Worth Valley Orange** button puts it back at any time with the best steam
   engine and diesel you have. The **2 trains** pattern is timed the same way, so the two trains meet at Damems
@@ -115,8 +117,10 @@ To rebuild the data, fetch OpenStreetMap for the corridor and the terrain tiles,
 - **The carriage sidings at Oxenhope are roofed.** The coaches stand in the sidings under a steel-framed, open-sided
   roof on green stanchions, one span over each road, beside the carriage shed of the railway's Carriage & Wagon
   department.
-- **Running costs are per trip.** Coal, oil and wear count each mile about three times over. A round trip on the short
+- **Running costs are per trip.** Coal and oil count each mile about three times over. A round trip on the short
   line then costs what it would on the original game's 14-mile line, so the economy plays the same.
+- **Engines wear half as fast** as they would on that 14-mile line, so they go longer between visits to the works.
+  Engines lent out on hire come back with half the wear too.
 
 ![Oxenhope: the carriage shed and the roofed carriage sidings with Mk1 coaches, the platform beyond](oxenhope.png)
 
