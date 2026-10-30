@@ -86,8 +86,9 @@ To rebuild the data, fetch OpenStreetMap for the corridor and the terrain tiles,
   real one is. The yard lies close beside the main line and is joined to it beyond the platform's Oxenhope end. Its
   lead runs straight on into the carriage siding, where the coaches wait alongside the main line, and the shed roads
   swing away to the engine shed, just past the platform's end with its doors facing Oxenhope. The works is on the
-  shed's main-line side, and the DMU siding runs down the side of the works: units not working that day are stored
-  there.
+  shed's main-line side and runs on past the shed's end, long enough to show every engine you have in for repair or
+  overhaul, end to end along its road and out of the doors if need be. The DMU siding runs down the side of the
+  works: units not working that day are stored there, and a unit waits there if the works is full.
   It's the same Haworth you drive through, so engines not out that day stand in the shed as you pass.
 - **The drive is real time.** The line isn't squeezed any more: the clock keeps real time while you're moving, and
   each way takes about a quarter of an hour at the 25 mph limit.

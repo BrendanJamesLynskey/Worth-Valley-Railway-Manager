@@ -3064,8 +3064,8 @@ function pathPos(r, s){
 // overhaul stand on their own road, the bay road, which leaves Shed road 2 just short of the shed doors.
 const SHED = (()=>{ const za = pathPos(2, routeEnd(2) - 50).z, zb = pathPos(2, routeEnd(2) + 3).z, [, o1, o2] = YARD.off;
   const xL = o1 - 2.9, xR = o2 + 2.9, xE = o2 + 10.6, bayX = o2 + 5.8, door1 = o1 - 2.05, door2 = o2 + 2.05;   // walls, and the edges of the two doors
-  const z0 = pathPos(3, zoneEnd(3)).z + 1, z1 = za - 1.5;
-  return {za, zb, xL, xR, xE, bayX, door1, door2, z0, z1, bayAt:z=>z <= z0 ? o2 : z >= z1 ? bayX : o2 + (bayX - o2)*(1 - Math.cos(Math.PI*(z - z0)/(z1 - z0)))/2}; })();
+  const z0 = pathPos(3, zoneEnd(3)).z + 1, z1 = za - 1.5, wz = pathPos(1, routeEnd(1)).z - 8;   // the works runs on past the shed's end
+  return {za, zb, wz, xL, xR, xE, bayX, door1, door2, z0, z1, bayAt:z=>z <= z0 ? o2 : z >= z1 ? bayX : o2 + (bayX - o2)*(1 - Math.cos(Math.PI*(z - z0)/(z1 - z0)))/2}; })();
 // The yard lies behind Haworth's platform, on the far side from the loop, close up to the main line, and joined to
 // it at the Oxenhope end. The lead comes in off the main line beyond the platform and runs straight on into the
 // carriage siding, which ends behind the platform; the shed roads swing away from the main line to the shed, which
@@ -3168,11 +3168,14 @@ function shedStatics(gl, spare, works){
     if(used[r] + md.len > YARD.sid[r-1] - 4) continue;
     const sc = routeEnd(r) - 0.4 - used[r] - md.len/2; used[r] += md.len + SHED_GAP;
     put(md, (off, len)=>{ const q = vPose({route:r, s:sc + off, len}); return {x:q.x, z:q.z, yaw:q.yaw + Math.PI}; }); }
-  let zEnd = SHED.zb - 2.2;
+  // the works: every engine under repair, end to end along the bay road from the stop block, out of the doors if need be
+  let zEnd = SHED.wz - 2.2;
   for(const l of works){ const md = locoModel(l.cat, liveryOf(l), l.number, l.busyWhy!=="paint");
-    if(zEnd - md.len < SHED.z1 + 3) break;
+    if(zEnd - md.len < SHED.z0 + 1){   // no room left: a unit waits on the DMU siding beside the works
+      if(l.kind==="dmu" && zD - md.len >= YDMU.z1 + 2){ const zc = zD - md.len/2; zD -= md.len + SHED_GAP; put(md, off=>({x:YDMU.x, z:zc + off, yaw:0})); }
+      continue; }
     const zc = zEnd - md.len/2; zEnd -= md.len + 3.5;
-    put(md, off=>({x:SHED.bayX, z:zc + off, yaw:0})); }
+    put(md, off=>{ const z = zc + off; return {x:SHED.bayAt(z), z, yaw:Math.atan2(SHED.bayAt(z + 1) - SHED.bayAt(z - 1), 2)}; }); }
   return out;
 }
 const worksEngines = () => state.locos.filter(l=>isBusy(l) && !isAway(l));
@@ -3224,7 +3227,7 @@ function startShunt(job, via){
   { const {za, zb, xL, xR} = SHED, xm = (xL+xR)/2;
     yd.walls = [[xL-0.4, xL+0.4, za-0.4, zb+0.4], [xR-0.4, xR+0.4, za-0.4, zb+0.4], [xL, xR, zb-0.4, zb+0.4],
                 [xL-0.4, SHED.door1, za-0.4, za+0.4], [xm-0.6, xm+0.6, za-0.4, za+0.4], [SHED.door2, xR+0.4, za-0.4, za+0.4],
-                [SHED.xE-0.4, SHED.xE+0.4, za-0.4, zb+0.4], [xR, SHED.xE, zb-0.4, zb+0.4],   // and the works extension, in through its own door
+                [SHED.xE-0.4, SHED.xE+0.4, za-0.4, SHED.wz+0.4], [xR-0.4, xR+0.4, zb, SHED.wz+0.4], [xR, SHED.xE, SHED.wz-0.4, SHED.wz+0.4],   // and the works, in through its own door
                 [xR, SHED.bayX-2.1, za-0.4, za+0.4], [SHED.bayX+2.1, SHED.xE+0.4, za-0.4, za+0.4]]; }
   // fold the laptop away and drop into the cab
   document.querySelector(".laptop").classList.add("away");
@@ -3498,9 +3501,9 @@ function yMap(){
   g.fillText("Engine shed", u(s0.z) + 6, v(SHED.xL) + 17);
   // the works bay beside it, with the engines under repair
   g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 4; g.beginPath();
-  for(let z = SHED.z0 - 2; z <= SHED.zb - 1; z += 2) z > SHED.z0 - 2 ? g.lineTo(u(z), v(SHED.bayAt(z))) : g.moveTo(u(z), v(SHED.bayAt(z))); g.stroke();
-  g.strokeStyle = "rgba(255,255,255,.55)"; g.lineWidth = 2; g.strokeRect(u(SHED.za), v(SHED.xE), u(SHED.zb) - u(SHED.za), v(SHED.xR) - v(SHED.xE));
-  g.font = "bold 13px Segoe UI, sans-serif"; g.fillText("Works", u(SHED.zb) - 48, v(SHED.xE) + 15); g.font = "bold 17px Segoe UI, sans-serif";
+  for(let z = SHED.z0 - 2; z <= SHED.wz - 1; z += 2) z > SHED.z0 - 2 ? g.lineTo(u(z), v(SHED.bayAt(z))) : g.moveTo(u(z), v(SHED.bayAt(z))); g.stroke();
+  g.strokeStyle = "rgba(255,255,255,.55)"; g.lineWidth = 2; g.strokeRect(u(SHED.za), v(SHED.xE), u(SHED.wz) - u(SHED.za), v(SHED.xR) - v(SHED.xE));
+  g.font = "bold 13px Segoe UI, sans-serif"; g.fillText("Works", u(SHED.wz) - 48, v(SHED.xE) + 15); g.font = "bold 17px Segoe UI, sans-serif";
   g.strokeStyle = "rgba(255,255,255,.35)"; g.lineWidth = 4; g.beginPath();   // the DMU siding, with the units in store
   for(let z = YDMU.z0 - 2; z <= YDMU.end; z += 2) z > YDMU.z0 - 2 ? g.lineTo(u(z), v(dmuAt(z))) : g.moveTo(u(z), v(dmuAt(z))); g.stroke();
   g.fillStyle = "#c0392b"; g.fillRect(u(YDMU.end)+1, v(YDMU.x)-9, 5, 18);
@@ -3659,7 +3662,7 @@ function sceneryMesh(){
 function yardWorksMesh(){
   const a = [], ballast = [.5,.47,.43], sleeper = [.27,.19,.13], railC = [.56,.54,.5];
   const brick = [.56,.3,.23], slate = [.24,.25,.29], cream = [.86,.8,.62], dark = [.12,.12,.13], glass = [.16,.19,.22], soot = [.2,.17,.15];
-  const {za, zb, xL, xR, xE, bayX} = SHED, zc = (za + zb)/2, sl = zb - za, xm = (xL + xR)/2, H = 6.4, ridge = 9.0;
+  const {za, zb, wz, xL, xR, xE, bayX} = SHED, zc = (za + zb)/2, sl = zb - za, xm = (xL + xR)/2, H = 6.4, ridge = 9.0, wc = (za + wz)/2, wl = wz - za;
   // a length of track along a yard path given as points
   const lay = P => { for(let i=0;i<P.length-1;i++){ const p = P[i], q = P[i+1], yaw = Math.atan2(q.x - p.x, q.z - p.z), l = Math.hypot(q.x - p.x, q.z - p.z), mx = (p.x + q.x)/2, mz = (p.z + q.z)/2;
       box(a, mx, 0.04, mz, 3.8, 0.48, l + 0.05, ballast, yaw);
@@ -3667,10 +3670,10 @@ function yardWorksMesh(){
       for(let t = 0.4; t < l; t += 0.8){ const f = t/l; box(a, p.x + (q.x - p.x)*f, 0.33, p.z + (q.z - p.z)*f, 2.6, 0.12, 0.26, sleeper, yaw); } } };
   box(a, (YX0 + YX1)/2, -0.06, YB/2, YX1 - YX0, 0.1, YB + 16, [.36,.33,.29]);   // the yard's cinder ground
   for(const r of [1,2,3]){ const P = []; for(let u = r===1 ? -1.5 : YARD.lead; u <= routeEnd(r) + 1.5; u += 2) P.push(pathPos(r, u)); lay(P); }
-  { const P = []; for(let z = SHED.z0 - 2; z <= zb - 1; z += 2) P.push({x:SHED.bayAt(z), z}); lay(P); }
+  { const P = []; for(let z = SHED.z0 - 2; z <= wz - 1; z += 2) P.push({x:SHED.bayAt(z), z}); lay(P); }
   { const P = []; for(let z = YDMU.z0 - 2; z <= YDMU.end + 1.5; z += 2) P.push({x:dmuAt(z), z}); lay(P); }   // the DMU siding
   const stop = (x, z) => { box(a, x, 0.75, z, 2.4, 1.0, 0.8, [.35,.25,.18]); box(a, x, 1.35, z, 2.8, 0.35, 0.3, [.75,.15,.12]); };
-  [1,2,3].forEach(r=>{ const e = pathPos(r, routeEnd(r) + 0.6); stop(e.x, e.z); }); stop(bayX, zb - 0.6); stop(YDMU.x, YDMU.end + 0.6);
+  [1,2,3].forEach(r=>{ const e = pathPos(r, routeEnd(r) + 0.6); stop(e.x, e.z); }); stop(bayX, wz - 0.6); stop(YDMU.x, YDMU.end + 0.6);
   // the lead goes on to the main line: a board marks the limit of shunt
   box(a, -2.0, 1.3, -1, 0.1, 2.6, 0.1, dark); box(a, -2.0, 2.6, -1.06, 1.1, 0.7, 0.05, cream); box(a, -2.0, 2.6, -1.09, 0.9, 0.12, 0.02, [.75,.15,.12]);
   // ground frame for the points, the STOP board for a unit drawing into the platform, and the signal box
@@ -3679,7 +3682,7 @@ function yardWorksMesh(){
   box(a, -7,1.7,YARD.lead-6, 4,3.4,6, brick); box(a, -7,4.6,YARD.lead-6, 4.2,2.4,6.2, cream);
   box(a, -4.88,4.7,YARD.lead-6, 0.05,1.4,5.2, [.18,.22,.27]); box(a, -7,6.1,YARD.lead-6, 5,0.5,7.2, slate); box(a, -7,6.6,YARD.lead-6, 0.3,0.3,7.6, slate);
   // the engine shed: brick walls, two open doors, a slate roof with smoke vents
-  box(a, (xL + xE)/2, 0.3, zc, xE - xL, 0.04, sl, [.17,.16,.15]);
+  box(a, (xL + xR)/2, 0.3, zc, xR - xL, 0.04, sl, [.17,.16,.15]); box(a, (xR + xE)/2, 0.3, wc, xE - xR, 0.04, wl, [.17,.16,.15]);
   for(const x of [xL, xR]) box(a, x, H/2, zc, 0.5, H, sl, brick);
   box(a, xm, H/2, zb, xR - xL + 0.5, H, 0.5, brick);
   box(a, (xL - 0.25 + SHED.door1)/2, H/2, za, SHED.door1 - xL + 0.25, H, 0.5, brick);
@@ -3692,24 +3695,25 @@ function yardWorksMesh(){
   quad(a, [xR+0.7,H-0.2,za-0.6],[xm,ridge+0.05,za-0.6],[xm,ridge+0.05,zb+0.6],[xR+0.7,H-0.2,zb+0.6], slate, [1,1,0]);
   for(let z = za + 4; z < zb - 2; z += 7){ box(a, xm, ridge + 0.35, z, 1.3, 0.7, 2.6, soot); box(a, xm, ridge + 0.8, z, 1.8, 0.12, 3.0, slate); }
   for(let z = za + 4; z < zb - 3; z += 5) for(const x of [xL - 0.27, xL + 0.27]) box(a, x, 3.4, z, 0.02, 2.0, 1.6, glass);
-  // the works extension: a lean-to along the shed, with its own door, roof lights, a travelling crane and benches
+  // the works: a lean-to along the shed and on past its end, with its own door, roof lights, a travelling crane and benches
   const eH = 5.0, eTop = 6.0, roofY = x => eTop + (eH - eTop)*(x - xR)/(xE - xR);
-  box(a, xE, eH/2, zc, 0.5, eH, sl, brick);
-  box(a, (xR + xE)/2, eH/2, zb, xE - xR, eH, 0.5, brick);
+  box(a, xE, eH/2, wc, 0.5, eH, wl, brick);
+  box(a, (xR + xE)/2, eH/2, wz, xE - xR, eH, 0.5, brick);
+  box(a, xR, eTop/2, (zb + wz)/2, 0.5, eTop, wz - zb, brick);   // its own wall beyond the shed
   box(a, (xR + bayX - 2.1)/2, eH/2, za, bayX - 2.1 - xR, eH, 0.5, brick);
   box(a, (bayX + 2.1 + xE + 0.25)/2, eH/2, za, xE + 0.25 - bayX - 2.1, eH, 0.5, brick);
   box(a, bayX, 4.55, za, 4.2, 0.9, 0.5, brick);
   box(a, bayX, 4.55, za - 0.27, 3.6, 0.45, 0.04, cream);                       // "WORKS" board
-  for(const z of [za - 0.25, zb + 0.25]) quad(a, [xR,eH,z],[xE+0.25,eH,z],[xE+0.25,eH,z],[xR,eTop,z], brick, [0,0,z<zc?-1:1]);
-  quad(a, [xR+0.25,eTop+0.05,za-0.5],[xR+0.25,eTop+0.05,zb+0.5],[xE+0.6,roofY(xE+0.6),zb+0.5],[xE+0.6,roofY(xE+0.6),za-0.5], slate, [0.15,1,0]);
-  quad(a, [xR+0.25,eTop-0.05,za-0.5],[xE+0.6,roofY(xE+0.6)-0.1,za-0.5],[xE+0.6,roofY(xE+0.6)-0.1,zb+0.5],[xR+0.25,eTop-0.05,zb+0.5], [.3,.28,.26], [0,-1,0]);
-  for(let z = za + 5; z < zb - 4; z += 9) quad(a, [xR+1.6,roofY(xR+1.6)+0.08,z],[xR+1.6,roofY(xR+1.6)+0.08,z+3],[xE-1.5,roofY(xE-1.5)+0.08,z+3],[xE-1.5,roofY(xE-1.5)+0.08,z], [.55,.62,.66], [0.15,1,0]);
-  for(let z = za + 4; z < zb - 3; z += 5) for(const x of [xE + 0.27, xE - 0.27]) box(a, x, 2.8, z, 0.02, 1.6, 1.6, glass);
+  for(const z of [za - 0.25, wz + 0.25]) quad(a, [xR,eH,z],[xE+0.25,eH,z],[xE+0.25,eH,z],[xR,eTop,z], brick, [0,0,z<wc?-1:1]);
+  quad(a, [xR+0.25,eTop+0.05,za-0.5],[xR+0.25,eTop+0.05,wz+0.5],[xE+0.6,roofY(xE+0.6),wz+0.5],[xE+0.6,roofY(xE+0.6),za-0.5], slate, [0.15,1,0]);
+  quad(a, [xR+0.25,eTop-0.05,za-0.5],[xE+0.6,roofY(xE+0.6)-0.1,za-0.5],[xE+0.6,roofY(xE+0.6)-0.1,wz+0.5],[xR+0.25,eTop-0.05,wz+0.5], [.3,.28,.26], [0,-1,0]);
+  for(let z = za + 5; z < wz - 4; z += 9) quad(a, [xR+1.6,roofY(xR+1.6)+0.08,z],[xR+1.6,roofY(xR+1.6)+0.08,z+3],[xE-1.5,roofY(xE-1.5)+0.08,z+3],[xE-1.5,roofY(xE-1.5)+0.08,z], [.55,.62,.66], [0.15,1,0]);
+  for(let z = za + 4; z < wz - 3; z += 5) for(const x of [xE + 0.27, xE - 0.27]) box(a, x, 2.8, z, 0.02, 1.6, 1.6, glass);
   // the travelling crane on its rails along the walls, with the hoist and hook over the bay road
-  for(const x of [xR + 0.5, xE - 0.5]) box(a, x, 4.2, zc, 0.3, 0.3, sl - 1, dark);
-  { const z = zc + 6; box(a, (xR + xE)/2, 4.45, z, xE - xR - 0.6, 0.45, 0.5, [.75,.55,.12]); box(a, bayX, 4.1, z, 0.9, 0.5, 0.9, dark);
+  for(const x of [xR + 0.5, xE - 0.5]) box(a, x, 4.2, wc, 0.3, 0.3, wl - 1, dark);
+  { const z = wc + 6; box(a, (xR + xE)/2, 4.45, z, xE - xR - 0.6, 0.45, 0.5, [.75,.55,.12]); box(a, bayX, 4.1, z, 0.9, 0.5, 0.9, dark);
     box(a, bayX, 3.2, z, 0.04, 1.4, 0.04, [.5,.5,.5]); box(a, bayX, 2.45, z, 0.25, 0.2, 0.12, dark); }
-  for(let z = za + 6; z < zb - 6; z += 12){ box(a, xE - 1.0, 0.9, z, 1.2, 0.1, 3.6, [.4,.3,.2]); for(const dz of [-1.6, 1.6]) for(const dx of [-0.5, 0.5]) box(a, xE - 1.0 + dx, 0.45, z + dz, 0.08, 0.9, 0.08, dark);
+  for(let z = za + 6; z < wz - 6; z += 12){ box(a, xE - 1.0, 0.9, z, 1.2, 0.1, 3.6, [.4,.3,.2]); for(const dz of [-1.6, 1.6]) for(const dx of [-0.5, 0.5]) box(a, xE - 1.0 + dx, 0.45, z + dz, 0.08, 0.9, 0.08, dark);
     box(a, xE - 1.0, 1.05, z - 0.8, 0.5, 0.2, 0.4, [.5,.5,.52]); box(a, xE - 0.8, 1.0, z + 0.9, 0.3, 0.1, 0.6, [.6,.15,.12]); }   // benches with a vice and a toolbox
   // a water crane by the doors and the water tower by the headshunt
   box(a, xm, 0.3, za - 7, 1.2, 0.6, 1.2, dark); box(a, xm, 2.0, za - 7, 0.35, 3.4, 0.35, dark); box(a, xm - 1.3, 3.6, za - 7, 2.6, 0.25, 0.25, dark);
